@@ -17,7 +17,8 @@ Update your local repository and run `git describe --tags master`.
 * Make sure your local master branch is up to date;
 * Check if you have added upstream by `git remote -v`. If not, run `git remote add upstream https://github.com/prebid/Prebid.js.git`;
 * Update remotes to the latest by `git fetch upstream`;
-* Check out master branch and merge the target version to it by, e.g., `git merge 2.44.1`.
+* Check out master branch and merge the target version to it by, e.g., `git merge 2.44.1`;
+* Push master branch if everything is good.
 
 ## How do I build?
 
