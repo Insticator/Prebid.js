@@ -52,13 +52,16 @@ jobs:
           from: dist
           to: s3://embedproduction/files/
           overwrite: true
-          arguments: --dryrun
+          arguments: |
+            --dryrun \
+            --cache-control 'max-age=86400'
       
 workflows:
   version: 2
   build:
     jobs:
       - build:
+          context: org-aws
           filters: 
             branches:
               only: master
