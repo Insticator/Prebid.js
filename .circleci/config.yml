@@ -45,16 +45,11 @@ jobs:
       - run: 
           name: Build Prebid.js
           command: gulp build --modules=modules.json
-      - run: |
-          mkdir dist
-          cp build/dist/prebid.js "dist/instbid-$(git describe --tags).js"
-      - aws-s3/sync:
-          from: dist
-          to: s3://embedproduction/files/
-          overwrite: true
-          arguments: |
-            --dryrun \
-            --cache-control 'max-age=86400'
+      - run: echo 'export UPLOAD_DEST="s3://embedproduction/files/instbid-$(git describe --tags).js"' >> "$BASH_ENV"
+      - aws-s3/copy:
+          from: build/dist/prebid.js
+          to: '"$UPLOAD_DEST"'
+          arguments: --cache-control 'max-age=86400'
       
 workflows:
   version: 2
