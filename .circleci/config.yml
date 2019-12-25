@@ -38,6 +38,8 @@ jobs:
     <<: *environment
     steps:
       - checkout
+      - run: echo "export UPLOAD_DEST='s3://embedproduction/files/instbid-$(git describe --tags).js'" >> "$BASH_ENV"
+      - run: cat $BASH_ENV
       - restore_cache: *restore_dep_cache
       - run: npm install
       - save_cache: *save_dep_cache
@@ -45,8 +47,6 @@ jobs:
       - run: 
           name: Build Prebid.js
           command: gulp build --modules=modules.json
-      - run: echo 'export UPLOAD_DEST="s3://embedproduction/files/instbid-$(git describe --tags).js"' >> "$BASH_ENV"
-      - run: cat $BASH_ENV
       - aws-s3/copy:
           from: build/dist/prebid.js
           to: '"$UPLOAD_DEST"'
