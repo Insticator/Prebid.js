@@ -43,7 +43,7 @@ jobs:
       - run: npm install
       - save_cache: *save_dep_cache
       - run: *install
-      - run: 
+      - run:
           name: Build Prebid.js
           command: gulp build --modules=modules.json
       - aws-s3/copy:
@@ -57,6 +57,6 @@ workflows:
     jobs:
       - build:
           context: org-aws
-          filters: 
+          filters:
             branches:
               only: master
