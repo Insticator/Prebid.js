@@ -21,5 +21,6 @@
   "sovrnBidAdapter",
   "synacormediaBidAdapter",
   "ucfunnelBidAdapter",
-  "roxotAnalyticsAdapter"
+  "roxotAnalyticsAdapter",
+  "adkernelBidAdapter"
 ]
