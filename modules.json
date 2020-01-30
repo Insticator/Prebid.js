@@ -1,6 +1,8 @@
 [
   "schain",
+  "userId",
   "33acrossBidAdapter",
+  "adkernelBidAdapter",
   "appnexusBidAdapter",
   "beachfrontBidAdapter",
   "brightcomBidAdapter",
@@ -21,6 +23,5 @@
   "sovrnBidAdapter",
   "synacormediaBidAdapter",
   "ucfunnelBidAdapter",
-  "roxotAnalyticsAdapter",
-  "adkernelBidAdapter"
+  "roxotAnalyticsAdapter"
 ]
