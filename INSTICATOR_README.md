@@ -14,11 +14,13 @@ Update your local repository and run `git describe --tags master`.
 
 ## How do I update master branch to get a new version of Prebid.js?
 
+*REMINDER: Do NOT forget to push tags in the last step!!*
+
 * Make sure your local master branch is up to date;
 * Check if you have added upstream by `git remote -v`. If not, run `git remote add upstream https://github.com/prebid/Prebid.js.git`;
 * Update remotes to the latest by `git fetch upstream`;
 * Check out master branch and merge the target version to it by, e.g., `git merge 2.44.1`;
-* Push master branch with `--tags` if everything is good. Check out the last step of CircleCI build to find out where the output is uploaded.
+* Push master branch with `--tags`, e.g. `git push --tags`, if everything is good. Check out the last step of CircleCI build to find out where the output is uploaded.
 
 ## How do I build?
 
