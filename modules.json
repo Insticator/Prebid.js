@@ -1,12 +1,8 @@
 [
-  "identityLinkIdSystem",
-  "schain",
-  "userId",
   "33acrossBidAdapter",
   "adkernelBidAdapter",
   "appnexusBidAdapter",
   "beachfrontBidAdapter",
-  "brightcomBidAdapter",
   "conversantBidAdapter",
   "districtmDMXBidAdapter",
   "eplanningBidAdapter",
@@ -24,5 +20,10 @@
   "sovrnBidAdapter",
   "synacormediaBidAdapter",
   "ucfunnelBidAdapter",
-  "roxotAnalyticsAdapter"
+  "roxotAnalyticsAdapter",
+  "schain",
+  "userId",
+  "unifiedIdSystem",
+  "identityLinkIdSystem",
+  "id5IdSystem"
 ]
