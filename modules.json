@@ -9,6 +9,7 @@
   "emx_digitalBidAdapter",
   "gumgumBidAdapter",
   "improvedigitalBidAdapter",
+  "insticatorBidAdapter",
   "ixBidAdapter",
   "openxBidAdapter",
   "pubmaticBidAdapter",
