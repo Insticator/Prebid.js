@@ -1,6 +1,6 @@
-import {config} from '../src/config.js';
-import {BANNER} from '../src/mediaTypes.js';
-import {registerBidder} from '../src/adapters/bidderFactory.js';
+import { config } from '../src/config.js';
+import { BANNER } from '../src/mediaTypes.js';
+import { registerBidder } from '../src/adapters/bidderFactory.js';
 import {
   cookiesAreEnabled,
   deepAccess,
@@ -15,10 +15,12 @@ const BIDDER_CODE = 'insticator';
 const ENDPOINT = 'https://ex.hunchme.com/v1/openrtb'; // staging endpoint!
 const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_COOKIE_EXP = 2592000000; // 30 days
+const BID_TTL = 300; // 5 minutes
 
 config.setDefaults({
   insticator: {
     endpointUrl: ENDPOINT,
+    bidTTL: BID_TTL,
   },
 });
 
@@ -51,13 +53,14 @@ function setUserId(userId) {
 
 function buildImpression(bidRequest) {
   const format = [];
-  const sizes = deepAccess(bidRequest, 'mediaTypes.banner.sizes') || bidRequest.sizes;
+  const sizes =
+    deepAccess(bidRequest, 'mediaTypes.banner.sizes') || bidRequest.sizes;
 
   for (const size of sizes) {
     format.push({
       w: size[0],
       h: size[1],
-    })
+    });
   }
 
   return {
@@ -133,7 +136,7 @@ function buildRequest(validBidRequests, bidderRequest) {
     device: buildDevice(),
     regs: buildRegs(bidderRequest),
     user: buildUser(),
-    imp: validBidRequests.map(bidRequest => buildImpression(bidRequest)),
+    imp: validBidRequests.map((bidRequest) => buildImpression(bidRequest)),
   };
 
   const params = config.getConfig('insticator.params');
@@ -148,7 +151,7 @@ function buildRequest(validBidRequests, bidderRequest) {
 }
 
 function buildBid(bid, bidderRequest) {
-  const originalBid = bidderRequest.bids.find(b => b.bidId === bid.impid);
+  const originalBid = bidderRequest.bids.find((b) => b.bidId === bid.impid);
 
   return {
     requestId: bid.impid,
@@ -156,7 +159,7 @@ function buildBid(bid, bidderRequest) {
     cpm: bid.price,
     currency: 'USD',
     netRevenue: true,
-    ttl: bid.exp,
+    ttl: bid.exp || config.getConfig('insticator.bidTTL') || BID_TTL,
     width: bid.w,
     height: bid.h,
     mediaType: 'banner',
@@ -166,21 +169,24 @@ function buildBid(bid, bidderRequest) {
 }
 
 function buildBidSet(seatbid, bidderRequest) {
-  return seatbid.bid.map(bid => buildBid(bid, bidderRequest));
+  return seatbid.bid.map((bid) => buildBid(bid, bidderRequest));
 }
 
 function validateSize(size) {
-  return (size instanceof Array) &&
+  return (
+    size instanceof Array &&
     size.length === 2 &&
     typeof size[0] === 'number' &&
-    typeof size[1] === 'number';
+    typeof size[1] === 'number'
+  );
 }
 
 function validateSizes(sizes) {
-  return (sizes instanceof Array) &&
+  return (
+    sizes instanceof Array &&
     sizes.length > 0 &&
-    sizes.map(validateSize)
-      .reduce((a, b) => a && b, true);
+    sizes.map(validateSize).reduce((a, b) => a && b, true)
+  );
 }
 
 export const spec = {
@@ -198,7 +204,10 @@ export const spec = {
       return false;
     }
 
-    if (!validateSizes(bid.sizes) && !validateSizes(bid.mediaTypes.banner.sizes)) {
+    if (
+      !validateSizes(bid.sizes) &&
+      !validateSizes(bid.mediaTypes.banner.sizes)
+    ) {
       logError('insticator: banner sizes not specified or invalid');
       return false;
     }
@@ -238,8 +247,8 @@ export const spec = {
       return [];
     }
 
-    const bidsets = body.seatbid.map(
-      seatbid => buildBidSet(seatbid, bidderRequest),
+    const bidsets = body.seatbid.map((seatbid) =>
+      buildBidSet(seatbid, bidderRequest)
     );
 
     return bidsets.reduce((a, b) => a.concat(b), []);
