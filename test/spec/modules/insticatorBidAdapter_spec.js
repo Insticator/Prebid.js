@@ -81,7 +81,6 @@ describe('Insticator bid adapter', () => {
             h: 250,
             impid: '1234abcd',
             price: 0.5,
-            exp: 300,
             crid: '987654321',
             adm: '<div>ad</div>',
           },
@@ -156,7 +155,7 @@ describe('Insticator bid adapter', () => {
       expect(requests).to.have.lengthOf(1);
       expect(requests[0]).to.deep.include({
         method: 'POST',
-        url: 'https://ex.ingage.tech/v1/openrtb',
+        url: 'https://ex.hunchme.com/v1/openrtb',
         options: {
           contentType: 'application/json',
           withCredentials: true,
@@ -225,7 +224,7 @@ describe('Insticator bid adapter', () => {
     it('should include in request GDPR options if available', () => {
       const requests = spec.buildRequests(
         [validBid, validBid2],
-        bidderRequestWithGDPR,
+        bidderRequestWithGDPR
       );
 
       expect(JSON.parse(requests[0].data)).to.deep.include({
@@ -251,14 +250,14 @@ describe('Insticator bid adapter', () => {
     it('should pass user id if available', () => {
       localStorage.setItem(
         'hb_insticator_uid',
-        '77016c8d-6c6e-40cb-8801-1060089b5c60',
+        '77016c8d-6c6e-40cb-8801-1060089b5c60'
       );
 
       const requests = spec.buildRequests([validBid, validBid2], bidderRequest);
       const rtbRequest = JSON.parse(requests[0].data);
 
       expect(rtbRequest.user.id).to.equal(
-        '77016c8d-6c6e-40cb-8801-1060089b5c60',
+        '77016c8d-6c6e-40cb-8801-1060089b5c60'
       );
     });
 
@@ -276,7 +275,7 @@ describe('Insticator bid adapter', () => {
     it('should correctly interpret valid response', () => {
       const bids = spec.interpretResponse(
         { body: validResponse },
-        { bidderRequest },
+        { bidderRequest }
       );
 
       expect(bids).to.deep.equal([
