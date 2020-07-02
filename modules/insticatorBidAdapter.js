@@ -189,6 +189,36 @@ function validateSizes(sizes) {
   );
 }
 
+function base64Encode(string) {
+  string = String(string);
+
+  if (typeof window.btoa !== 'undefined') {
+    return window.btoa(string)
+  }
+
+  // Polyfill
+  var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+  var bitmap;
+  var a;
+  var b;
+  var c;
+  var result = '';
+  var i = 0;
+  var rest = string.length % 3;
+
+  for (; i < string.length;) {
+    if ((a = string.charCodeAt(i++)) > 255 ||
+      (b = string.charCodeAt(i++)) > 255 ||
+      (c = string.charCodeAt(i++)) > 255) { throw new TypeError("Failed to execute 'btoa' on 'Window': The string to be encoded contains characters outside of the Latin1 range."); }
+
+    bitmap = (a << 16) | (b << 8) | c;
+    result += b64.charAt(bitmap >> 18 & 63) + b64.charAt(bitmap >> 12 & 63) +
+      b64.charAt(bitmap >> 6 & 63) + b64.charAt(bitmap & 63);
+  }
+
+  return rest ? result.slice(0, rest - 3) + '==='.substring(rest) : result;
+}
+
 export const spec = {
   code: BIDDER_CODE,
   supportedMediaTypes: [BANNER],
@@ -268,6 +298,15 @@ export const spec = {
     }
 
     return syncs;
+  },
+
+  onBidWon: function(winObj) {
+    const cpm = winObj.cpm;
+
+    winObj.ad = winObj.ad.replace(
+      /\${AUCTION_PRICE:B64}/,
+      base64Encode(cpm)
+    );
   },
 };
 
