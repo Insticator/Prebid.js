@@ -900,6 +900,10 @@ export function timestamp() {
   return new Date().getTime();
 }
 
+export function hasDeviceAccess() {
+  return config.getConfig('deviceAccess') !== false;
+}
+
 export function checkCookieSupport() {
   if (window.navigator.cookieEnabled || !!document.cookie.length) {
     return true;
@@ -1339,4 +1343,28 @@ export function compareOn(property) {
     }
     return 0;
   }
+}
+
+export function mergeDeep(target, ...sources) {
+  if (!sources.length) return target;
+  const source = sources.shift();
+
+  if (isPlainObject(target) && isPlainObject(source)) {
+    for (const key in source) {
+      if (isPlainObject(source[key])) {
+        if (!target[key]) Object.assign(target, { [key]: {} });
+        mergeDeep(target[key], source[key]);
+      } else if (isArray(source[key])) {
+        if (!target[key]) {
+          Object.assign(target, { [key]: source[key] });
+        } else if (isArray(target[key])) {
+          target[key] = target[key].concat(source[key]);
+        }
+      } else {
+        Object.assign(target, { [key]: source[key] });
+      }
+    }
+  }
+
+  return mergeDeep(target, ...sources);
 }
