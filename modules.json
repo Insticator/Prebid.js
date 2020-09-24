@@ -11,6 +11,7 @@
   "improvedigitalBidAdapter",
   "insticatorBidAdapter",
   "ixBidAdapter",
+  "mediagoBidAdapter",
   "openxBidAdapter",
   "pubmaticBidAdapter",
   "pulsepointBidAdapter",
