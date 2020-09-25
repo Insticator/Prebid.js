@@ -3,25 +3,25 @@
  */
 
 import * as utils from '../src/utils.js';
-import { getStorageManager } from '../src/storageManager.js';
+// import { getStorageManager } from '../src/storageManager.js'; // compatible to v3.0
+//
 import {
   registerBidder
 } from '../src/adapters/bidderFactory.js';
 
 const BIDDER_CODE = 'mediago';
-const PROTOCOL = window.document.location.protocol;
-const IS_SECURE = (PROTOCOL === 'https:') ? 1 : 0;
+// const PROTOCOL = window.document.location.protocol;
 const ENDPOINT_URL =
   // ((PROTOCOL === 'https:') ? 'https' : 'http') +
   'https://rtb-us.mediago.io/api/bid?tn=';
 const TIME_TO_LIVE = 500;
 // const ENDPOINT_URL = '/api/bid?tn=';
-const storage = getStorageManager();
+// const storage = getStorageManager(); // compatible to v3.0
 let globals = {};
 let itemMaps = {};
 
 /**
- * 获取随机id
+ * get random id
  * @param  {number} a random number from 0 to 15
  * @return {string}   random number or random string
  */
@@ -47,19 +47,51 @@ function getRandomId(
     );
 }
 
+/**
+ * @param {string} key
+ * @param {string} value
+ * @param {string} [expires='']
+ * @param {string} [sameSite='/']
+ * @param {string} [domain] domain (e.g., 'example.com' or 'subdomain.example.com').
+ * If not specified, defaults to the host portion of the current document location.
+ * If a domain is specified, subdomains are always included.
+ * Domain must match the domain of the JavaScript origin. Setting cookies to foreign domains will be silently ignored.
+ */
+const setCookie = function(key, value, expires, sameSite, domain) {
+  if (getProperty(window, 'document', 'cookie')) {
+    const domainPortion = (domain && domain !== '') ? ` ;domain=${encodeURIComponent(domain)}` : '';
+    const expiresPortion = (expires && expires !== '') ? ` ;expires=${expires}` : '';
+    const isNone = (sameSite != null && sameSite.toLowerCase() == 'none')
+    const secure = (isNone) ? '; Secure' : '';
+    document.cookie = `${key}=${encodeURIComponent(value)}${expiresPortion}; path=/${domainPortion}${sameSite ? `; SameSite=${sameSite}` : ''}${secure}`;
+  }
+};
+
+/**
+ * @param {string} name
+ * @returns {(string|null)}
+ */
+const getCookie = function(name) {
+  if (getProperty(window, 'document', 'cookie')) {
+    let m = window.document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]*)\\s*(;|$)');
+    return m ? decodeURIComponent(m[2]) : null;
+  }
+  return null;
+};
+
 /* ----- mguid:start ------ */
 const COOKIE_KEY_MGUID = '__mguid_';
 
 /**
- * 获取用户id
+ * Get user id
  * @return {string}
  */
 const getUserID = () => {
-  const i = storage.getCookie(COOKIE_KEY_MGUID);
+  const i = getCookie(COOKIE_KEY_MGUID);
 
   if (i === null) {
     const uuid = utils.generateUUID();
-    storage.setCookie(COOKIE_KEY_MGUID, uuid);
+    setCookie(COOKIE_KEY_MGUID, uuid);
     return uuid;
   }
   return i;
@@ -68,7 +100,7 @@ const getUserID = () => {
 /* ----- mguid:end ------ */
 
 /**
- * 获取一个对象的某个值，如果没有则返回空字符串
+ * Get a value of an object, if not, return an empty string
  * @param  {Object}    obj  对象
  * @param  {...string} keys 键名
  * @return {any}
@@ -164,9 +196,8 @@ function transformSizes(requestSizes) {
  */
 function getItems(validBidRequests, bidderRequest) {
   let items = [];
-  for (let i in validBidRequests) {
-    let req = validBidRequests[i];
-    let ret;
+  items = validBidRequests.map((req, i) => {
+    let ret = {};
     let mediaTypes = getProperty(req, 'mediaTypes');
 
     let sizes = transformSizes(getProperty(req, 'sizes'));
@@ -180,38 +211,32 @@ function getItems(validBidRequests, bidderRequest) {
       }
     }
 
-    // Continue only if there is a matching size
-    if (matchSize) {
-      // banner广告类型
-      if (mediaTypes.banner) {
-        let id = '' + (+i + 1);
-        ret = {
-          id: id,
-          // bidFloor: 0, // todo
-          banner: {
-            h: matchSize.height,
-            w: matchSize.width,
-            pos: 1,
-          },
-          secure: IS_SECURE // for server-side to check if it's secure page
-        };
-        itemMaps[id] = {
-          req,
-          ret
-        };
-      }
+    // if (mediaTypes.native) {}
+    // banner广告类型
+    if (mediaTypes.banner) {
+      let id = '' + (i + 1);
+      ret = {
+        id: id,
+        // bidFloor: 0, // todo
+        banner: {
+          h: matchSize.height,
+          w: matchSize.width,
+          pos: 1,
+        }
+      };
+      itemMaps[id] = {
+        req,
+        ret
+      };
     }
 
-    if (ret) {
-      items.push(ret);
-    }
-  }
-
+    return ret;
+  });
   return items;
 }
 
 /**
- * 获取rtb请求参数
+ * get ad request param
  *
  * @param {Array}  validBidRequests an an array of bids
  * @param {Object} bidderRequest  The master bidRequest object
@@ -223,6 +248,7 @@ function getParam(validBidRequests, bidderRequest) {
   let isTest = 0;
   let auctionId = getProperty(bidderRequest, 'auctionId') || getRandomId();
   let items = getItems(validBidRequests, bidderRequest);
+  // console.log(items);
 
   const domain = document.domain;
   const location = utils.deepAccess(bidderRequest, 'refererInfo.referer');
@@ -294,19 +320,20 @@ export const spec = {
    * @return ServerRequest Info describing the request to the server.
    */
   buildRequests: function(validBidRequests, bidderRequest) {
+    // console.log('mediago', {
+    //   validBidRequests, bidderRequest
+    // });
     let payload = getParam(validBidRequests, bidderRequest);
+    // console.log('mediago', {
+    //   payload
+    // });
 
-    // request ad only if there is a matching size
-    if (payload) {
-      const payloadString = JSON.stringify(payload);
-      return {
-        method: 'POST',
-        url: ENDPOINT_URL + globals['token'],
-        data: payloadString,
-      };
-    } else {
-      return null;
-    }
+    const payloadString = JSON.stringify(payload);
+    return {
+      method: 'POST',
+      url: ENDPOINT_URL + globals['token'],
+      data: payloadString,
+    };
   },
 
   /**
