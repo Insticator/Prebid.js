@@ -1,6 +1,6 @@
-import * as utils from '../src/utils';
-// import {config} from 'src/config';
-import {registerBidder} from '../src/adapters/bidderFactory';
+import * as utils from '../src/utils.js';
+// import {config} from 'src/config.js';
+import {registerBidder} from '../src/adapters/bidderFactory.js';
 
 const BIDDER_CODE = 'bidglass';
 
@@ -67,15 +67,30 @@ export const spec = {
       return ori;
     };
 
+    let bidglass = window['bidglass'];
+
     utils._each(validBidRequests, function(bid) {
       bid.sizes = ((utils.isArray(bid.sizes) && utils.isArray(bid.sizes[0])) ? bid.sizes : [bid.sizes]);
       bid.sizes = bid.sizes.filter(size => utils.isArray(size));
 
-      // Stuff to send: [bid id, sizes, adUnitId]
+      var adUnitId = utils.getBidIdParameter('adUnitId', bid.params);
+      var options = utils.deepClone(bid.params);
+
+      delete options.adUnitId;
+
+      // Merge externally set targeting params
+      if (typeof bidglass === 'object' && bidglass.getTargeting) {
+        let targeting = bidglass.getTargeting(adUnitId, options.targeting);
+
+        if (targeting && Object.keys(targeting).length > 0) options.targeting = targeting;
+      }
+
+      // Stuff to send: [bid id, sizes, adUnitId, options]
       imps.push({
         bidId: bid.bidId,
         sizes: bid.sizes,
-        adUnitId: utils.getBidIdParameter('adUnitId', bid.params)
+        adUnitId: adUnitId,
+        options: options
       });
     });
 
