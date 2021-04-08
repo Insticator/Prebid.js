@@ -1,6 +1,6 @@
-import {registerBidder} from '../src/adapters/bidderFactory';
-import {BANNER} from '../src/mediaTypes';
-import * as utils from '../src/utils';
+import {registerBidder} from '../src/adapters/bidderFactory.js';
+import {BANNER} from '../src/mediaTypes.js';
+import * as utils from '../src/utils.js';
 const BIDDER_CODE = 'deepintent';
 const BIDDER_ENDPOINT = 'https://prebid.deepintent.com/prebid';
 const USER_SYNC_URL = 'https://cdn.deepintent.com/syncpixel.html';
@@ -37,11 +37,16 @@ export const spec = {
       imp: validBidRequests.map(bid => buildImpression(bid)),
       site: buildSite(bidderRequest),
       device: buildDevice(),
-      user: user && user.length == 1 ? user[0] : {},
+      user: user && user.length === 1 ? user[0] : {}
     };
 
     if (bidderRequest && bidderRequest.uspConsent) {
       utils.deepSetValue(openRtbBidRequest, 'regs.ext.us_privacy', bidderRequest.uspConsent);
+    }
+
+    if (bidderRequest && bidderRequest.gdprConsent) {
+      utils.deepSetValue(openRtbBidRequest, 'user.ext.consent', bidderRequest.gdprConsent.consentString);
+      utils.deepSetValue(openRtbBidRequest, 'regs.ext.gdpr', (bidderRequest.gdprConsent.gdprApplies ? 1 : 0));
     }
 
     return {

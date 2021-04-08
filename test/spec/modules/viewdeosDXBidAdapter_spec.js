@@ -1,8 +1,8 @@
 import {expect} from 'chai';
-import {spec} from 'modules/viewdeosDXBidAdapter';
-import {newBidder} from 'src/adapters/bidderFactory';
+import {spec} from 'modules/viewdeosDXBidAdapter.js';
+import {newBidder} from 'src/adapters/bidderFactory.js';
 
-const ENDPOINT = '//ghb.sync.viewdeos.com/auction/';
+const ENDPOINT = 'https://ghb.sync.viewdeos.com/auction/';
 
 const DISPLAY_REQUEST = {
   'bidder': 'viewdeos',
@@ -43,6 +43,7 @@ const SERVER_VIDEO_RESPONSE = {
   }
   ]
 };
+const SERVER_OUSTREAM_VIDEO_RESPONSE = SERVER_VIDEO_RESPONSE;
 
 const SERVER_OUSTREAM_VIDEO_RESPONSE = SERVER_VIDEO_RESPONSE;
 
