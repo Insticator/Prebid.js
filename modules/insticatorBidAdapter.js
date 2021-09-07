@@ -145,6 +145,15 @@ function buildRequest(validBidRequests, bidderRequest) {
     };
   }
 
+  if (Array.isArray(bidderRequest.userIdAsEids) && bidderRequest.userIdAsEids.length > 0) {
+    req.user = {
+      ...req.user,
+      ext: {
+        eids: bidderRequest.userIdAsEids,
+      }
+    }
+  }
+
   if (bidderRequest.schain) {
     req.source = {
       ...req.source,
