@@ -14,6 +14,7 @@ const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
 const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_COOKIE_EXP = 2592000000; // 30 days
 const BID_TTL = 300; // 5 minutes
+const ASI_REGEX = /^insticator\.com$/;
 
 config.setDefaults({
   insticator: {
@@ -116,6 +117,17 @@ function buildUser() {
   return {
     id: userId,
   };
+}
+
+function extractSchain(bids) {
+  if (!bids) return;
+
+  const bid = bids.find(bid =>
+    bid.schain &&
+    bid.schain.nodes &&
+    bid.schain.nodes.find(node => ASI_REGEX.test(node.asi))
+  );
+  return bid ? bid.schain : bids[0].schain;
 }
 
 function buildRequest(validBidRequests, bidderRequest) {
