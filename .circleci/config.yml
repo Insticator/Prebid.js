@@ -50,29 +50,6 @@ jobs:
           from: build/dist/prebid.js
           to: '"$UPLOAD_DEST"'
           arguments: --cache-control 'max-age=86400'
-  build_analytics:
-    <<: *environment
-    steps:
-      - checkout
-      - run: echo "export UPLOAD_DEST='s3://embedproduction/files/instbid-a-$(git describe --tags).js'" >> "$BASH_ENV"
-#      - run: echo "export UPLOAD_DEST_ANALYTICS='s3://embedproduction/files/instbid-4.43.4-32-gd88debd5.js'" >> "$BASH_ENV"
-      - run: echo "export UPLOAD_DEST_ANALYTICS='s3://embedproduction/files/instbid-a-with-init-$(git describe --tags).js'" >> "$BASH_ENV"
-      - restore_cache: *restore_dep_cache
-      - run: npm install
-      - save_cache: *save_dep_cache
-      - run: *install
-      - run:
-          name: Build Prebid.js with analytics
-          command: gulp build-analytics --modules=modules.json
-      - aws-s3/copy:
-          from: build/dist/prebid-analytics.js
-          to: '"$UPLOAD_DEST_ANALYTICS"'
-          arguments: --cache-control 'max-age=600'
-      - aws-s3/copy:
-          from: build/dist/prebid.js
-          to: '"$UPLOAD_DEST"'
-          arguments: --cache-control 'max-age=600'
-
 
 workflows:
   version: 2
@@ -84,9 +61,3 @@ workflows:
             branches:
               only:
                 - master
-      - build_analytics:
-          context: org-aws
-          filters:
-            branches:
-              only:
-                - analytics
