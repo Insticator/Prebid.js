@@ -109,9 +109,7 @@ function mapBid({
 }
 
 function ajaxCall(endpoint, callback, data, options = {}) {
-  if (data) {
-    options.contentType = 'application/json'
-  }
+  options.contentType = 'application/json'
 
   return ajax(endpoint, callback, data, options)
 }
