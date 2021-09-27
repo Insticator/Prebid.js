@@ -7,17 +7,103 @@ import { ajax } from '../src/ajax.js'
 const baseUrl = 'https://tr.ingage.tech/'
 const ENDPOINTS = {
   AD_RENDER_FAILED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fpb_render_failed%2Fjsonschema%2F1-0-0',
+  BID_WON: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fpb_bid_won%2Fjsonschema%2F1-0-0'
 }
 
 const analyticsType = 'endpoint'
 const ADAPTER_CODE = 'insticator'
 
 const {
+  AUCTION_INIT,
+  BID_REQUESTED,
+  BID_RESPONSE,
+  BID_WON,
   AD_RENDER_FAILED
 } = CONSTANTS.EVENTS
 
 const SERVER_EVENTS = {
-  AD_RENDER_FAILED: 'adRenderFailed'
+  AD_RENDER_FAILED: 'adRenderFailed',
+  WON: 'bidWon'
+}
+
+const SERVER_BID_STATUS = {
+  BID_REQUESTED: 'bidRequested',
+  BID_RECEIVED: 'bidReceived',
+  BID_WON: 'bidWon'
+}
+
+let auctions = {}
+
+const onAuctionInit = (args) => {
+  const { auctionId, adUnits, timestamp } = args
+
+  let auction = auctions[auctionId] = {
+    ...args,
+    adUnits: {},
+    auctionStart: timestamp,
+  }
+
+  utils._each(adUnits, adUnit => {
+    auction.adUnits[adUnit.code] = {
+      ...adUnit,
+      auctionId,
+      adunid: adUnit.code,
+      bids: {},
+    }
+  })
+}
+
+const onBidRequested = (args) => {
+  const { auctionId, bids, start, timeout } = args
+  const _start = start || Date.now()
+  const auction = auctions[auctionId]
+  const auctionAdUnits = auction.adUnits
+
+  bids.forEach(bid => {
+    const { adUnitCode } = bid
+    const bidId = parseBidId(bid)
+
+    auctionAdUnits[adUnitCode].bids[bidId] = {
+      ...bid,
+      timeout,
+      start: _start,
+      rs: _start - auction.auctionStart,
+      bidStatus: SERVER_BID_STATUS.BID_REQUESTED,
+    }
+  })
+}
+
+const onBidResponse = (args) => {
+  const { auctionId, adUnitCode } = args
+  const auction = auctions[auctionId]
+  const bidId = parseBidId(args)
+  let bid = auction.adUnits[adUnitCode].bids[bidId]
+
+  Object.assign(bid, args, {
+    bidStatus: SERVER_BID_STATUS.BID_RECEIVED,
+    end: args.responseTimestamp,
+    re: args.responseTimestamp - auction.auctionStart
+  })
+}
+
+const onBidWon = (args) => {
+  const { auctionId, adUnitCode } = args
+  const bidId = parseBidId(args)
+  const bid = auctions[auctionId].adUnits[adUnitCode].bids[bidId]
+
+  Object.assign(bid, args, {
+    bidStatus: SERVER_BID_STATUS.BID_WON,
+    isW: true,
+    isH: true
+  })
+
+  const payload = {
+    auctionId,
+    adunid: adUnitCode,
+    bid: mapBid(bid, BID_WON)
+  }
+
+  sendEvent(SERVER_EVENTS.WON, payload)
 }
 
 const onAdRenderFailed = (args) => {
@@ -41,6 +127,18 @@ var insticatorAdapter = Object.assign(
 
 function handleEvent(eventType, args) {
   switch (eventType) {
+    case AUCTION_INIT:
+      onAuctionInit(args)
+      break
+    case BID_REQUESTED:
+      onBidRequested(args)
+      break
+    case BID_RESPONSE:
+      onBidResponse(args)
+      break
+    case BID_WON:
+      onBidWon(args)
+      break
     case AD_RENDER_FAILED:
       onAdRenderFailed(args)
       break
@@ -55,8 +153,17 @@ function sendEvent(eventType, args) {
   let endpoint
   if (eventType === SERVER_EVENTS.AD_RENDER_FAILED) {
     endpoint = ENDPOINTS.AD_RENDER_FAILED
+  } else if (eventType === SERVER_EVENTS.WON) {
+    endpoint = ENDPOINTS.BID_WON
+  }
+
+  if (endpoint) {
     ajaxCall(endpoint, () => { }, JSON.stringify(data), {})
   }
+}
+
+function parseBidId(bid) {
+  return bid.bidId || bid.requestId
 }
 
 function mapBid({
@@ -119,6 +226,12 @@ insticatorAdapter.enableAnalytics = function (config) {
   // initOptions = config.options;
   insticatorAdapter.originEnableAnalytics(config)
 };
+
+insticatorAdapter.originDisableAnalytics = insticatorAdapter.disableAnalytics
+insticatorAdapter.disableAnalytics = function () {
+  auctions = {}
+  insticatorAdapter.originDisableAnalytics()
+}
 
 adapterManager.registerAnalyticsAdapter({
   adapter: insticatorAdapter,
