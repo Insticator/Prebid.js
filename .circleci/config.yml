@@ -65,7 +65,7 @@ jobs:
       - aws-s3/copy:
           from: build/dist/prebid-analytics.js
           to: '"$UPLOAD_DEST"'
-          arguments: --cache-control 'max-age=86400'
+#          arguments: --cache-control 'max-age=86400'
 
 workflows:
   version: 2
