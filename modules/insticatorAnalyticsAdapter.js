@@ -7,7 +7,7 @@ import { ajax } from '../src/ajax.js'
 const baseUrl = 'https://tr.ingage.tech/'
 const ENDPOINTS = {
   AD_RENDER_FAILED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fpb_render_failed%2Fjsonschema%2F1-0-0',
-  BID_WON: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fpb_bid_won%2Fjsonschema%2F1-0-0'
+  BID_WON: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fpb_bid_won%2Fjsonschema%2F1-0-1'
 }
 
 const analyticsType = 'endpoint'
