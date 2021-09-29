@@ -6,8 +6,9 @@ import { ajax } from '../src/ajax.js'
 
 const baseUrl = 'https://tr.ingage.tech/'
 const ENDPOINTS = {
-  AD_RENDER_FAILED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fpb_render_failed%2Fjsonschema%2F1-0-0',
-  BID_WON: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fpb_bid_won%2Fjsonschema%2F1-0-1'
+  AD_RENDER_FAILED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Frender_failed%2Fjsonschema%2F1-0-0',
+  AD_RENDER_SUCCEEDED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Frender_succeeded%2Fjsonschema%2F1-0-0',
+  BID_WON: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fbid_won%2Fjsonschema%2F1-0-0'
 }
 
 const analyticsType = 'endpoint'
@@ -18,11 +19,13 @@ const {
   BID_REQUESTED,
   BID_RESPONSE,
   BID_WON,
-  AD_RENDER_FAILED
+  AD_RENDER_FAILED,
+  AD_RENDER_SUCCEEDED
 } = CONSTANTS.EVENTS
 
 const SERVER_EVENTS = {
   AD_RENDER_FAILED: 'adRenderFailed',
+  AD_RENDER_SUCCEEDED: 'adRenderSucceeded',
   WON: 'bidWon'
 }
 
@@ -111,10 +114,21 @@ const onAdRenderFailed = (args) => {
   data.timestamp = Date.now()
 
   if (data.bid) {
-    data = {...data, ...mapBid(data.bid, AD_RENDER_FAILED)}
+    data.bid = mapBid(data.bid, AD_RENDER_FAILED)
   }
 
   sendEvent(SERVER_EVENTS.AD_RENDER_FAILED, data)
+}
+
+const onAdRenderSucceeded = (args) => {
+  let data = utils.deepClone(args)
+  data.timestamp = Date.now()
+
+  if (data.bid) {
+    data.bid = mapBid(data.bid, AD_RENDER_SUCCEEDED)
+  }
+
+  sendEvent(SERVER_EVENTS.AD_RENDER_SUCCEEDED, data)
 }
 
 var insticatorAdapter = Object.assign(
@@ -142,6 +156,9 @@ function handleEvent(eventType, args) {
     case AD_RENDER_FAILED:
       onAdRenderFailed(args)
       break
+    case AD_RENDER_SUCCEEDED:
+      onAdRenderSucceeded(args)
+      break
   }
 }
 
@@ -156,6 +173,8 @@ function sendEvent(eventType, args) {
     endpoint = ENDPOINTS.AD_RENDER_FAILED
   } else if (eventType === SERVER_EVENTS.WON) {
     endpoint = ENDPOINTS.BID_WON
+  } else if (eventType === SERVER_EVENTS.AD_RENDER_SUCCEEDED) {
+    endpoint = ENDPOINTS.AD_RENDER_SUCCEEDED
   }
 
   if (endpoint) {
