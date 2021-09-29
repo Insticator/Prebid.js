@@ -148,7 +148,8 @@ function handleEvent(eventType, args) {
 function sendEvent(eventType, args) {
   let data = utils.deepClone(args)
   Object.assign(data, {
-    eventType
+    eventType,
+    domain: window.location.hostname
   })
   let endpoint
   if (eventType === SERVER_EVENTS.AD_RENDER_FAILED) {
