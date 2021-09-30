@@ -110,22 +110,26 @@ const onBidWon = (args) => {
 }
 
 const onAdRenderFailed = (args) => {
-  let data = utils.deepClone(args)
-  data.timestamp = Date.now()
+  const { bid } = args
+  let data = {
+    timestamp: Date.now()
+  }
 
-  if (data.bid) {
-    data.bid = mapBid(data.bid, AD_RENDER_FAILED)
+  if (bid) {
+    data.bid = mapBid(bid, AD_RENDER_FAILED)
   }
 
   sendEvent(SERVER_EVENTS.AD_RENDER_FAILED, data)
 }
 
 const onAdRenderSucceeded = (args) => {
-  let data = utils.deepClone(args)
-  data.timestamp = Date.now()
+  const { bid } = args
+  let data = {
+    timestamp: Date.now()
+  }
 
-  if (data.bid) {
-    data.bid = mapBid(data.bid, AD_RENDER_SUCCEEDED)
+  if (bid) {
+    data.bid = mapBid(bid, AD_RENDER_SUCCEEDED)
   }
 
   sendEvent(SERVER_EVENTS.AD_RENDER_SUCCEEDED, data)
@@ -170,6 +174,9 @@ function sendEvent(eventType, data) {
   }
   if (data.bid) {
     payload.bid = data.bid
+  }
+  if (data.timestamp) {
+    payload.timestamp = data.timestamp
   }
   if (data.auctionId) {
     payload.auctionId = data.auctionId
