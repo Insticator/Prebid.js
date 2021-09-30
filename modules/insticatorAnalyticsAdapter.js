@@ -229,7 +229,7 @@ function mapBid({
   delete bidObj['statusMessage']
   delete bidObj['status']
   delete bidObj['adUrl']
-  delete bidObj['ad']
+  // delete bidObj['ad']
   delete bidObj['usesGenericKeys']
   delete bidObj['requestTimestamp']
   return bidObj
