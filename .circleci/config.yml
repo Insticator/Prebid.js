@@ -61,11 +61,11 @@ jobs:
       - run: *install
       - run:
           name: Build Prebid.js
-          command: gulp build --modules=modules.json
+          command: gulp build-analytics --modules=modules.json
       - aws-s3/copy:
-          from: build/dist/prebid.js
+          from: build/dist/prebid-analytics.js
           to: '"$UPLOAD_DEST"'
-          arguments: --cache-control 'max-age=7200'
+          arguments: --cache-control 'max-age=600'
 
 workflows:
   version: 2
