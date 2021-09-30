@@ -162,12 +162,21 @@ function handleEvent(eventType, args) {
   }
 }
 
-function sendEvent(eventType, args) {
-  let data = utils.deepClone(args)
-  Object.assign(data, {
+function sendEvent(eventType, data) {
+  // let data = utils.deepClone(args)
+  let payload = {
     eventType,
     domain: window.location.hostname
-  })
+  }
+  if (data.bid) {
+    payload.bid = data.bid
+  }
+  if (data.auctionId) {
+    payload.auctionId = data.auctionId
+  }
+  if (data.adunid) {
+    payload.adunid = data.adunid
+  }
   let endpoint
   if (eventType === SERVER_EVENTS.AD_RENDER_FAILED) {
     endpoint = ENDPOINTS.AD_RENDER_FAILED
@@ -178,7 +187,7 @@ function sendEvent(eventType, args) {
   }
 
   if (endpoint) {
-    ajaxCall(endpoint, () => { }, JSON.stringify(data), {})
+    ajaxCall(endpoint, () => { }, JSON.stringify(payload), {})
   }
 }
 
