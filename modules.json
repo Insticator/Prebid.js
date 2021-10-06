@@ -30,9 +30,5 @@
   "tripleliftBidAdapter",
   "ucfunnelBidAdapter",
   "unrulyBidAdapter",
-  "aolBidAdapter",
-  "userId",
-  "unifiedIdSystem",
-  "identityLinkIdSystem",
-  "id5IdSystem"
+  "aolBidAdapter"
 ]

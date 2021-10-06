@@ -193,7 +193,7 @@ function sendEvent(eventType, data) {
     endpoint = ENDPOINTS.AD_RENDER_SUCCEEDED
   }
 
-  if (endpoint) {
+  if (endpoint && payload.bid && payload.bid.bidderCode === ADAPTER_CODE) {
     ajaxCall(endpoint, () => { }, JSON.stringify(payload), {})
   }
 }
