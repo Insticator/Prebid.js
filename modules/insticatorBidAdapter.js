@@ -173,7 +173,7 @@ function buildRequest(validBidRequests, bidderRequest) {
     };
   }
 
-  const schain = extractSchain(bidderRequest.bids);
+  const schain = extractSchain(validBidRequests);
 
   if (schain) {
     req.source.ext = { schain };
