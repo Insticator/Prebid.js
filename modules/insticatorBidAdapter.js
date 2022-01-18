@@ -120,7 +120,7 @@ function buildUser() {
   };
 }
 
-function extractSchain(bids) {
+function extractSchain(bids, requestId) {
   if (!bids) return;
 
   const bid = bids.find(bid =>
@@ -128,7 +128,10 @@ function extractSchain(bids) {
     bid.schain.nodes &&
     bid.schain.nodes.find(node => ASI_REGEX.test(node.asi))
   );
-  return bid ? bid.schain : bids[0].schain;
+  const schain = bid ? bid.schain : bids[0].schain;
+  if (schain && schain.nodes && schain.nodes.length && schain.nodes[0]) {
+    schain.nodes[0].rid = requestId;
+  }
 }
 
 function extractEids(bids) {
@@ -173,7 +176,7 @@ function buildRequest(validBidRequests, bidderRequest) {
     };
   }
 
-  const schain = extractSchain(validBidRequests);
+  const schain = extractSchain(validBidRequests, bidderRequest.bidderRequestId);
 
   if (schain) {
     req.source.ext = { schain };
