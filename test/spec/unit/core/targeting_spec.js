@@ -179,7 +179,7 @@ const nativeBid2 = {
   'currency': 'JPY',
   'netRevenue': true,
   'ttl': 60,
-  'referrer': 'http://test.localhost:9999/integrationExamples/gpt/demo_native.html?pbjs_debug=true',
+  'referrer': 'http://test.localhost:9999/integrationExamples/gpt/demo_native.html?instibid_debug=true',
   'native': {
     'image': {
       'url': 'https://ads-tr.bigmining.com/img/300x250.png',

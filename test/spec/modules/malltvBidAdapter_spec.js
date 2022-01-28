@@ -120,7 +120,7 @@ describe('malltvAdapterTest', () => {
         'placementId': '{placementId}',
         'propertyId': '{propertyId}',
         'pageViewGuid': '{pageViewGuid}',
-        'url': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?pbjs_debug=true',
+        'url': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?instibid_debug=true',
         'requestid': '26ee8fe87940da7',
         'bidid': '2962dbedc4768bf'
       }
@@ -131,7 +131,7 @@ describe('malltvAdapterTest', () => {
         'CPM': 1,
         'Width': 300,
         'Height': 250,
-        'Referrer': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?pbjs_debug=true',
+        'Referrer': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?instibid_debug=true',
         'Ad': '<div>Test ad</div>',
         'CreativeId': '123abc',
         'NetRevenue': false,
@@ -177,7 +177,7 @@ describe('malltvAdapterTest', () => {
       expect(result[0].currency).to.equal('EUR');
       expect(result[0].netRevenue).to.equal(false);
       expect(result[0].ttl).to.equal(360);
-      expect(result[0].referrer).to.equal('http://localhost:9999/integrationExamples/gpt/hello_world.html?pbjs_debug=true');
+      expect(result[0].referrer).to.equal('http://localhost:9999/integrationExamples/gpt/hello_world.html?instibid_debug=true');
       expect(result[0].ad).to.equal('<div>Test ad</div>');
       expect(result[0].meta.advertiserDomains).to.deep.equal(['somedomain.com']);
     })

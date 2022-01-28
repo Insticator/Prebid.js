@@ -1,7 +1,7 @@
 const expect = require('chai').expect;
 const { host, protocol, waitForElement } = require('../../../helpers/testing-utils');
 
-const TEST_PAGE_URL = `${protocol}://${host}:9999/test/pages/instream.html?pbjs_debug=true`;
+const TEST_PAGE_URL = `${protocol}://${host}:9999/test/pages/instream.html?instibid_debug=true`;
 const ALERT_BOX_CSS_SELECTOR = 'div[id="event-window"] > p[id="statusText"]';
 
 const EXPECTED_TARGETING_KEYS = {

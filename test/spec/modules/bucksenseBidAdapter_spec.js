@@ -75,11 +75,11 @@ describe('Bucksense Adapter', function() {
         'auctionStart': 1557176022728,
         'timeout': 1000,
         'refererInfo': {
-          'referer': 'https://stefanod.hera.pe/prebid/?pbjs_debug=true',
+          'referer': 'https://stefanod.hera.pe/prebid/?instibid_debug=true',
           'reachedTop': true,
           'numIframes': 0,
           'stack': [
-            'https://stefanod.hera.pe/prebid/?pbjs_debug=true'
+            'https://stefanod.hera.pe/prebid/?instibid_debug=true'
           ]
         },
         'start': 1557176022731

@@ -382,7 +382,7 @@ describe('ApacdexBidAdapter', function () {
       afterEach(function () {
         config.setConfig({ debug: false });
       });
-      it('should return a properly formatted request with pbjs_debug is true', function () {
+      it('should return a properly formatted request with instibid_debug is true', function () {
         const bidRequests = spec.buildRequests(bidRequest, bidderRequests);
         expect(bidRequests.data.test).to.equal(1);
       });

@@ -32,11 +32,11 @@ To view an [example of an Adloox integration](../integrationExamples/gpt/adloox.
 
 **N.B.** `categoryTranslation` is required by `dfpAdServerVideo` that otherwise causes a JavaScript console warning
 
-Now point your browser at: http://localhost:9999/integrationExamples/gpt/adloox.html?pbjs_debug=true
+Now point your browser at: http://localhost:9999/integrationExamples/gpt/adloox.html?instibid_debug=true
 
 ### Public Example
 
-The example is published publically at: https://storage.googleapis.com/adloox-ads-js-test/prebid.html?pbjs_debug=true
+The example is published publically at: https://storage.googleapis.com/adloox-ads-js-test/prebid.html?instibid_debug=true
 
 It is recommended you use [Google Chrome's 'Local Overrides' located in the Developer Tools panel](https://www.trysmudford.com/blog/chrome-local-overrides/) to explore the example without the inconvience of having to run your own web server.
 
