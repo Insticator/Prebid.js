@@ -132,6 +132,8 @@ function extractSchain(bids, requestId) {
   if (schain && schain.nodes && schain.nodes.length && schain.nodes[0]) {
     schain.nodes[0].rid = requestId;
   }
+
+  return schain;
 }
 
 function extractEids(bids) {
