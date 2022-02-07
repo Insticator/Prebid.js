@@ -56,7 +56,7 @@ describe('admediaAdapterTests', function () {
       'refererInfo': {
         'numIframes': 0,
         'reachedTop': true,
-        'referer': 'https://test.com/index.html?pbjs_debug=true'
+        'referer': 'https://test.com/index.html?instibid_debug=true'
       }
 
     };

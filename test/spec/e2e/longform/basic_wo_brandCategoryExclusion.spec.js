@@ -10,7 +10,7 @@ const uuidRegex = /(\d|\w){8}-((\d|\w){4}-){3}(\d|\w){12}/;
 describe('longform ads without using brandCategoryExclusion', function() {
   this.retries(3);
   it('process the bids successfully', function() {
-    browser.url(protocol + '://' + host + ':9999/integrationExamples/longform/basic_wo_brandCategoryExclusion.html?pbjs_debug=true');
+    browser.url(protocol + '://' + host + ':9999/integrationExamples/longform/basic_wo_brandCategoryExclusion.html?instibid_debug=true');
     browser.pause(7000);
 
     const loadPrebidBtnXpath = '//*[@id="loadPrebidRequestBtn"]';

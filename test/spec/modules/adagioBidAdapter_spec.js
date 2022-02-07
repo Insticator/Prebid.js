@@ -57,7 +57,7 @@ const BidderRequestBuilder = function BidderRequestBuilder(options) {
     refererInfo: {
       numIframes: 0,
       reachedTop: true,
-      referer: 'http://test.io/index.html?pbjs_debug=true'
+      referer: 'http://test.io/index.html?instibid_debug=true'
     }
   };
 
@@ -1497,7 +1497,7 @@ describe('Adagio bid adapter', () => {
         refererInfo: {
           numIframes: 0,
           reachedTop: true,
-          referer: 'http://test.io/index.html?pbjs_debug=true'
+          referer: 'http://test.io/index.html?instibid_debug=true'
         }
       }).build();
 

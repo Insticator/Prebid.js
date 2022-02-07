@@ -44,8 +44,8 @@ const sampleRequest = {
     }
   ],
   'site': {
-    'page': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?pbjs_debug=true',
-    'ref': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?pbjs_debug=true',
+    'page': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?instibid_debug=true',
+    'ref': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?instibid_debug=true',
     'publisher': {
       'id': 'xxxxxx'
     }
@@ -380,12 +380,12 @@ const sampleBidderRequest = {
   },
   'uspConsent': 1,
   'refererInfo': {
-    'referer': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?pbjs_debug=true',
+    'referer': 'http://localhost:9999/integrationExamples/gpt/hello_world.html?instibid_debug=true',
     'reachedTop': true,
     'isAmp': false,
     'numIframes': 0,
     'stack': [
-      'http://localhost:9999/integrationExamples/gpt/hello_world.html?pbjs_debug=true'
+      'http://localhost:9999/integrationExamples/gpt/hello_world.html?instibid_debug=true'
     ],
     'canonicalUrl': null
   },

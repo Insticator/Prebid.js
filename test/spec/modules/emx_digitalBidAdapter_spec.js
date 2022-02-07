@@ -211,7 +211,7 @@ describe('emx_digital Adapter', function () {
       'refererInfo': {
         'numIframes': 0,
         'reachedTop': true,
-        'referer': 'https://example.com/index.html?pbjs_debug=true'
+        'referer': 'https://example.com/index.html?instibid_debug=true'
       },
       'bids': [{
         'bidder': 'emx_digital',
@@ -303,7 +303,7 @@ describe('emx_digital Adapter', function () {
       request = spec.buildRequests(bidderRequest.bids, bidderRequest);
       request = JSON.parse(request.data);
       expect(request.site).to.have.property('domain', 'example.com');
-      expect(request.site).to.have.property('page', 'https://example.com/index.html?pbjs_debug=true');
+      expect(request.site).to.have.property('page', 'https://example.com/index.html?instibid_debug=true');
       expect(request.site).to.have.property('ref', window.top.document.referrer);
     });
 

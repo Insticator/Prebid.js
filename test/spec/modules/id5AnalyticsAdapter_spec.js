@@ -253,12 +253,12 @@ describe('ID5 analytics adapter', () => {
         'auctionStart': 1621959214757,
         'timeout': 2000,
         'refererInfo': {
-          'referer': 'https://www.blog.com/?pbjs_debug=true',
+          'referer': 'https://www.blog.com/?instibid_debug=true',
           'reachedTop': true,
           'isAmp': false,
           'numIframes': 0,
           'stack': [
-            'https://www.blog.com/?pbjs_debug=true'
+            'https://www.blog.com/?instibid_debug=true'
           ],
           'canonicalUrl': null
         },

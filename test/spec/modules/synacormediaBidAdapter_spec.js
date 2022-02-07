@@ -146,10 +146,10 @@ describe('synacormediaBidAdapter ', function () {
       auctionStart: 1553624929697,
       timeout: 700,
       refererInfo: {
-        referer: 'https://localhost:9999/test/pages/video.html?pbjs_debug=true',
+        referer: 'https://localhost:9999/test/pages/video.html?instibid_debug=true',
         reachedTop: true,
         numIframes: 0,
-        stack: ['https://localhost:9999/test/pages/video.html?pbjs_debug=true']
+        stack: ['https://localhost:9999/test/pages/video.html?instibid_debug=true']
       },
       start: 1553624929700
     };

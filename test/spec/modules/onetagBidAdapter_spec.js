@@ -414,7 +414,7 @@ function getBannerVideoRequest() {
           type: 'video'
         }
       ],
-      location: 'https%3A%2F%2Flocal.onetag.net%3A9000%2Fv2%2Fprebid-video%2Fvideo.html%3Fpbjs_debug%3Dtrue',
+      location: 'https%3A%2F%2Flocal.onetag.net%3A9000%2Fv2%2Fprebid-video%2Fvideo.html%3Finstibid_debug%3Dtrue',
       referrer: '0',
       masked: 0,
       wWidth: 860,
