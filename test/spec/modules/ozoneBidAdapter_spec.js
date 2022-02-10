@@ -1254,11 +1254,11 @@ var multiBidderRequest1 = {
     'auctionStart': 1592918645574,
     'timeout': 3000,
     'refererInfo': {
-      'referer': 'http://ozone.ardm.io/adapter/2.4.0/620x350-switch.html?guardian=true&pbjs_debug=true',
+      'referer': 'http://ozone.ardm.io/adapter/2.4.0/620x350-switch.html?guardian=true&instibid_debug=true',
       'reachedTop': true,
       'numIframes': 0,
       'stack': [
-        'http://ozone.ardm.io/adapter/2.4.0/620x350-switch.html?guardian=true&pbjs_debug=true'
+        'http://ozone.ardm.io/adapter/2.4.0/620x350-switch.html?guardian=true&instibid_debug=true'
       ]
     },
     'gdprConsent': {

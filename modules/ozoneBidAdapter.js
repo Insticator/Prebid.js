@@ -189,7 +189,7 @@ export const spec = {
     singleRequest = singleRequest !== false; // undefined & true will be true
     utils.logInfo(`config ${whitelabelBidder}.singleRequest : `, singleRequest);
     let ozoneRequest = {}; // we only want to set specific properties on this, not validBidRequests[0].params
-    delete ozoneRequest.test; // don't allow test to be set in the config - ONLY use $_GET['pbjs_debug']
+    delete ozoneRequest.test; // don't allow test to be set in the config - ONLY use $_GET['instibid_debug']
 
     // First party data module : look for ortb2 in setconfig & set the User object. NOTE THAT this should happen before we set the consentString
     let fpd = config.getConfig('ortb2');
@@ -355,7 +355,7 @@ export const spec = {
       'page': document.location.href,
       'id': htmlParams.siteId
     };
-    ozoneRequest.test = (getParams.hasOwnProperty('pbjs_debug') && getParams['pbjs_debug'] === 'true') ? 1 : 0;
+    ozoneRequest.test = (getParams.hasOwnProperty('instibid_debug') && getParams['instibid_debug'] === 'true') ? 1 : 0;
 
     // this should come as late as possible so it overrides any user.ext.consent value
     if (bidderRequest && bidderRequest.gdprConsent) {

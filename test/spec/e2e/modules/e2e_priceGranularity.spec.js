@@ -1,7 +1,7 @@
 const expect = require('chai').expect;
 const { host, protocol, switchFrame, waitForElement } = require('../../../helpers/testing-utils');
 
-const TEST_PAGE_URL = `${protocol}://${host}:9999/test/pages/priceGranularity.html?pbjs_debug=true`;
+const TEST_PAGE_URL = `${protocol}://${host}:9999/test/pages/priceGranularity.html?instibid_debug=true`;
 const CREATIVE_IFRAME_CSS_SELECTOR = 'iframe[id="google_ads_iframe_/19968336/header-bid-tag-0_0"]';
 
 const EXPECTED_TARGETING_KEYS = {

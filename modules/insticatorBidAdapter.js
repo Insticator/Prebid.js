@@ -5,6 +5,7 @@ import {
   deepAccess,
   generateUUID,
   logError,
+  isArray,
 } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
 
@@ -119,7 +120,7 @@ function buildUser() {
   };
 }
 
-function extractSchain(bids) {
+function extractSchain(bids, requestId) {
   if (!bids) return;
 
   const bid = bids.find(bid =>
@@ -127,7 +128,19 @@ function extractSchain(bids) {
     bid.schain.nodes &&
     bid.schain.nodes.find(node => ASI_REGEX.test(node.asi))
   );
-  return bid ? bid.schain : bids[0].schain;
+  const schain = bid ? bid.schain : bids[0].schain;
+  if (schain && schain.nodes && schain.nodes.length && schain.nodes[0]) {
+    schain.nodes[0].rid = requestId;
+  }
+
+  return schain;
+}
+
+function extractEids(bids) {
+  if (!bids) return;
+
+  const bid = bids.find(bid => isArray(bid.userIdAsEids) && bid.userIdAsEids.length > 0);
+  return bid ? bid.userIdAsEids : bids[0].userIdAsEids;
 }
 
 function buildRequest(validBidRequests, bidderRequest) {
@@ -147,20 +160,34 @@ function buildRequest(validBidRequests, bidderRequest) {
     regs: buildRegs(bidderRequest),
     user: buildUser(),
     imp: validBidRequests.map((bidRequest) => buildImpression(bidRequest)),
+    ext: {
+      insticator: {
+        adapter: {
+          vendor: 'prebid',
+          prebid: '$prebid.version$'
+        }
+      }
+    }
   };
 
   const params = config.getConfig('insticator.params');
 
   if (params) {
     req.ext = {
-      insticator: params,
+      insticator: {...req.ext.insticator, ...params},
     };
   }
 
-  const schain = extractSchain(bidderRequest.bids);
+  const schain = extractSchain(validBidRequests, bidderRequest.bidderRequestId);
 
   if (schain) {
     req.source.ext = { schain };
+  }
+
+  const eids = extractEids(bidderRequest.bids);
+
+  if (eids) {
+    req.user.ext = { eids };
   }
 
   return req;
@@ -168,6 +195,7 @@ function buildRequest(validBidRequests, bidderRequest) {
 
 function buildBid(bid, bidderRequest) {
   const originalBid = bidderRequest.bids.find((b) => b.bidId === bid.impid);
+  const meta = Object.assign({}, bid.ext.meta, { advertiserDomains: bid.adomain });
 
   return {
     requestId: bid.impid,
@@ -181,6 +209,7 @@ function buildBid(bid, bidderRequest) {
     mediaType: 'banner',
     ad: bid.adm,
     adUnitCode: originalBid.adUnitCode,
+    meta: meta,
   };
 }
 

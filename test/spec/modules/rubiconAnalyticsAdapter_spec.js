@@ -1222,7 +1222,7 @@ describe('rubicon analytics adapter', function () {
       });
 
       it('should use the query utm param rubicon kv value and pass updated kv and pvid when defined', function () {
-        sandbox.stub(utils, 'getWindowLocation').returns({'search': '?utm_source=other', 'pbjs_debug': 'true'});
+        sandbox.stub(utils, 'getWindowLocation').returns({'search': '?utm_source=other', 'instibid_debug': 'true'});
 
         config.setConfig({rubicon: {
           fpkvs: {
@@ -2059,11 +2059,11 @@ describe('rubicon analytics adapter', function () {
   });
 
   it('getHostNameFromReferer correctly grabs hostname from an input URL', function () {
-    let inputUrl = 'https://www.prebid.org/some/path?pbjs_debug=true';
+    let inputUrl = 'https://www.prebid.org/some/path?instibid_debug=true';
     expect(getHostNameFromReferer(inputUrl)).to.equal('www.prebid.org');
-    inputUrl = 'https://www.prebid.com/some/path?pbjs_debug=true';
+    inputUrl = 'https://www.prebid.com/some/path?instibid_debug=true';
     expect(getHostNameFromReferer(inputUrl)).to.equal('www.prebid.com');
-    inputUrl = 'https://prebid.org/some/path?pbjs_debug=true';
+    inputUrl = 'https://prebid.org/some/path?instibid_debug=true';
     expect(getHostNameFromReferer(inputUrl)).to.equal('prebid.org');
     inputUrl = 'http://xn--p8j9a0d9c9a.xn--q9jyb4c/';
     expect(typeof getHostNameFromReferer(inputUrl)).to.equal('string');
