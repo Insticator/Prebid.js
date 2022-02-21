@@ -5,6 +5,7 @@ import {
   deepAccess,
   generateUUID,
   logError,
+  isArray,
 } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
 import find from 'core-js-pure/features/array/find.js';
@@ -15,6 +16,7 @@ const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_COOKIE_EXP = 2592000000; // 30 days
 const BID_TTL = 300; // 5 minutes
 const GVLID = 910;
+const ASI_REGEX = /^insticator\.com$/;
 
 export const storage = getStorageManager(GVLID, BIDDER_CODE);
 
@@ -121,6 +123,29 @@ function buildUser() {
   };
 }
 
+function extractSchain(bids, requestId) {
+  if (!bids) return;
+
+  const bid = bids.find(bid =>
+    bid.schain &&
+    bid.schain.nodes &&
+    bid.schain.nodes.find(node => ASI_REGEX.test(node.asi))
+  );
+  const schain = bid ? bid.schain : bids[0].schain;
+  if (schain && schain.nodes && schain.nodes.length && schain.nodes[0]) {
+    schain.nodes[0].rid = requestId;
+  }
+
+  return schain;
+}
+
+function extractEids(bids) {
+  if (!bids) return;
+
+  const bid = bids.find(bid => isArray(bid.userIdAsEids) && bid.userIdAsEids.length > 0);
+  return bid ? bid.userIdAsEids : bids[0].userIdAsEids;
+}
+
 function buildRequest(validBidRequests, bidderRequest) {
   const req = {
     id: bidderRequest.bidderRequestId,
@@ -138,14 +163,34 @@ function buildRequest(validBidRequests, bidderRequest) {
     regs: buildRegs(bidderRequest),
     user: buildUser(),
     imp: validBidRequests.map((bidRequest) => buildImpression(bidRequest)),
+    ext: {
+      insticator: {
+        adapter: {
+          vendor: 'prebid',
+          prebid: '$prebid.version$'
+        }
+      }
+    }
   };
 
   const params = config.getConfig('insticator.params');
 
   if (params) {
     req.ext = {
-      insticator: params,
+      insticator: {...req.ext.insticator, ...params},
     };
+  }
+
+  const schain = extractSchain(validBidRequests, bidderRequest.bidderRequestId);
+
+  if (schain) {
+    req.source.ext = { schain };
+  }
+
+  const eids = extractEids(bidderRequest.bids);
+
+  if (eids) {
+    req.user.ext = { eids };
   }
 
   return req;
@@ -153,6 +198,7 @@ function buildRequest(validBidRequests, bidderRequest) {
 
 function buildBid(bid, bidderRequest) {
   const originalBid = find(bidderRequest.bids, (b) => b.bidId === bid.impid);
+  const meta = Object.assign({}, bid.ext && bid.ext.meta || {}, { advertiserDomains: bid.adomain });
 
   return {
     requestId: bid.impid,
@@ -166,9 +212,7 @@ function buildBid(bid, bidderRequest) {
     mediaType: 'banner',
     ad: bid.adm,
     adUnitCode: originalBid.adUnitCode,
-    meta: {
-      advertiserDomains: bid.bidADomain && bid.bidADomain.length ? bid.bidADomain : []
-    },
+    meta: meta,
   };
 }
 
