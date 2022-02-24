@@ -12,6 +12,7 @@ let utils = require('src/utils.js');
 describe('InsticatorBidAdapter', function () {
   const adapter = newBidder(spec);
 
+  const bidderRequestId = '22edbae2733bf6'
   let bidRequest = {
     bidder: 'insticator',
     adUnitCode: 'adunit-code',
@@ -25,10 +26,22 @@ describe('InsticatorBidAdapter', function () {
       }
     },
     bidId: '30b31c1838de1e',
+    schain: {
+      'ver': '1.0',
+      'complete': 1,
+      'nodes': [
+        {
+          'asi': 'insticator.com',
+          'sid': '00001',
+          'hp': 1,
+          'rid': bidderRequestId
+        }
+      ]
+    }
   };
 
   let bidderRequest = {
-    bidderRequestId: '22edbae2733bf6',
+    bidderRequestId,
     auctionId: '74f78609-a92d-4cf1-869f-1b244bbfb5d2',
     timeout: 300,
     gdprConsent: {
@@ -144,12 +157,23 @@ describe('InsticatorBidAdapter', function () {
       const data = JSON.parse(requests[0].data);
 
       expect(data).to.be.an('object');
-      expect(data).to.have.all.keys('id', 'tmax', 'source', 'site', 'device', 'regs', 'user', 'imp');
+      expect(data).to.have.all.keys('id', 'tmax', 'source', 'site', 'device', 'regs', 'user', 'imp', 'ext');
       expect(data.id).to.equal(bidderRequest.bidderRequestId);
       expect(data.tmax).to.equal(bidderRequest.timeout);
-      expect(data.source).to.eql({
-        fd: 1,
-        tid: bidderRequest.auctionId,
+      expect(data.source).to.have.all.keys('fd', 'tid', 'ext');
+      expect(data.source.fd).to.equal(1);
+      expect(data.source.tid).to.equal(bidderRequest.auctionId);
+      expect(data.source.ext).to.have.property('schain').to.deep.equal({
+        'ver': '1.0',
+        'complete': 1,
+        'nodes': [
+          {
+            'asi': 'insticator.com',
+            'sid': '00001',
+            'hp': 1,
+            'rid': bidderRequest.bidderRequestId
+          }
+        ]
       });
       expect(data.site).to.be.an('object');
       expect(data.site.domain).not.to.be.empty;
@@ -183,6 +207,14 @@ describe('InsticatorBidAdapter', function () {
           },
         }
       }]);
+      expect(data.ext).to.be.an('object');
+      expect(data.ext.insticator).to.be.an('object')
+      expect(data.ext.insticator).to.deep.equal({
+        adapter: {
+          vendor: 'prebid',
+          prebid: '$prebid.version$'
+        }
+      });
     });
 
     it('should generate new userId if not valid user is stored', function () {
