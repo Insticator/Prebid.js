@@ -15,7 +15,6 @@ const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
 const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_COOKIE_EXP = 2592000000; // 30 days
 const BID_TTL = 300; // 5 minutes
-const ASI_REGEX = /^insticator\.com$/;
 
 config.setDefaults({
   insticator: {
@@ -121,14 +120,9 @@ function buildUser() {
 }
 
 function extractSchain(bids, requestId) {
-  if (!bids) return;
+  if (!bids || bids.length === 0 || !bids[0].schain) return;
 
-  const bid = bids.find(bid =>
-    bid.schain &&
-    bid.schain.nodes &&
-    bid.schain.nodes.find(node => ASI_REGEX.test(node.asi))
-  );
-  const schain = bid ? bid.schain : bids[0].schain;
+  const schain = bids[0].schain;
   if (schain && schain.nodes && schain.nodes.length && schain.nodes[0]) {
     schain.nodes[0].rid = requestId;
   }
@@ -195,7 +189,15 @@ function buildRequest(validBidRequests, bidderRequest) {
 
 function buildBid(bid, bidderRequest) {
   const originalBid = bidderRequest.bids.find((b) => b.bidId === bid.impid);
-  const meta = Object.assign({}, bid.ext && bid.ext.meta || {}, { advertiserDomains: bid.adomain });
+  let meta = {}
+
+  if (bid.ext && bid.ext.meta) {
+    meta = bid.ext.meta
+  }
+
+  if (bid.adomain) {
+    meta.advertiserDomains = bid.adomain
+  }
 
   return {
     requestId: bid.impid,
@@ -209,7 +211,7 @@ function buildBid(bid, bidderRequest) {
     mediaType: 'banner',
     ad: bid.adm,
     adUnitCode: originalBid.adUnitCode,
-    meta: meta,
+    ...(Object.keys(meta).length > 0 ? {meta} : {})
   };
 }
 
