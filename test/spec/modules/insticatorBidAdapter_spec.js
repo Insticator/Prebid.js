@@ -313,6 +313,12 @@ describe('InsticatorBidAdapter', function () {
                 h: 200,
                 adm: 'adm1',
                 exp: 60,
+                adomain: ['example.com'],
+                ext: {
+                  meta: {
+                    test: 1
+                  }
+                }
               },
               {
                 impid: 'bid2',
@@ -349,6 +355,10 @@ describe('InsticatorBidAdapter', function () {
         mediaType: 'banner',
         ad: 'adm1',
         adUnitCode: 'adunit-code-1',
+        meta: {
+          advertiserDomains: ['example.com'],
+          test: 1
+        }
       },
       {
         requestId: 'bid2',
