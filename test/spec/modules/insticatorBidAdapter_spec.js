@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { spec, storage } from '../../../modules/InsticatorBidAdapter.js';
+import { spec, storage } from '../../../modules/insticatorBidAdapter.js';
 import { newBidder } from 'src/adapters/bidderFactory.js'
 import { userSync } from '../../../src/userSync.js';
 
