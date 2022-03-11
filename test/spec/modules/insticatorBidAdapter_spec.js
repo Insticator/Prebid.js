@@ -1,7 +1,6 @@
 import { expect } from 'chai';
-import { spec, storage } from '../../../modules/InsticatorBidAdapter.js';
+import { spec, storage } from '../../../modules/insticatorBidAdapter.js';
 import { newBidder } from 'src/adapters/bidderFactory.js'
-import { userSync } from '../../../src/userSync.js';
 
 const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_DUMMY_VALUE = '74f78609-a92d-4cf1-869f-1b244bbfb5d2';
@@ -26,6 +25,13 @@ describe('InsticatorBidAdapter', function () {
       }
     },
     bidId: '30b31c1838de1e',
+    ortb2Imp: {
+      ext: {
+        data: {
+          pbadslot: 'pbadslot/test'
+        }
+      }
+    },
     schain: {
       'ver': '1.0',
       'complete': 1,
@@ -202,6 +208,7 @@ describe('InsticatorBidAdapter', function () {
           ]
         },
         ext: {
+          gpid: bidRequest.ortb2Imp.ext.data.pbadslot,
           insticator: {
             adUnitId: bidRequest.params.adUnitId,
           },
