@@ -98,7 +98,7 @@ const onAuctionEnd = (args) => {
   let auction = auctions[args.auctionId];
 
   for (const key in auction.adUnits) {
-    auction.adUnits[key].bids = Object.values(auction.adUnits[key].bids).map((bid) => { return mapBidForAnalytics(bid) });
+    auction.adUnits[key].bids = Object.values(auction.adUnits[key].bids).map((bid) => { return mapBid(bid) });
   }
 
   const payload = {
@@ -297,72 +297,8 @@ function ajaxCall(endpoint, callback, data, options = {}) {
   return ajax(endpoint, callback, data, options)
 }
 
-function mapBidForAnalytics({
-  bidStatus,
-  start,
-  end,
-  mediaType,
-  bidder,
-  bidderRequestsCount,
-  bidderWinsCount,
-  creativeId,
-  originalCpm,
-  originalCurrency,
-  source,
-  netRevenue,
-  currency,
-  cpm,
-  params,
-  width,
-  height,
-  timeToRespond,
-  responseTimestamp,
-  ...rest
-}) {
-  const bidObj = {
-    bst: bidStatus,
-    b: bidder,
-    s: start,
-    e: responseTimestamp || end,
-    mt: mediaType,
-    brc: bidderRequestsCount,
-    bwc: bidderWinsCount,
-    crId: creativeId,
-    oCpm: originalCpm,
-    oCur: originalCurrency,
-    src: source,
-    nrv: netRevenue,
-    cur: currency,
-    cpm: cpm,
-    p: params,
-    w: width,
-    h: height,
-    ttr: timeToRespond,
-    ...rest,
-  }
-  delete bidObj['ad']
-  delete bidObj['adId']
-  delete bidObj['adUnitCode']
-  delete bidObj['auctionId']
-  delete bidObj['bidderCode']
-  delete bidObj['bidRequestsCount']
-  delete bidObj['bidderRequestId']
-  delete bidObj['schain']
-  delete bidObj['refererInfo']
-  delete bidObj['statusMessage']
-  delete bidObj['status']
-  delete bidObj['adUrl']
-  delete bidObj['usesGenericKeys']
-  delete bidObj['requestTimestamp']
-  delete bidObj['transactionId']
-  delete bidObj['userIdAsEids']
-
-  return bidObj
-}
-
 insticatorAdapter.originEnableAnalytics = insticatorAdapter.enableAnalytics
 insticatorAdapter.enableAnalytics = function (config) {
-  // initOptions = config.options;
   insticatorAdapter.originEnableAnalytics(config)
 };
 
