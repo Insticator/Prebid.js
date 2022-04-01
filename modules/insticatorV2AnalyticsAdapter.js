@@ -36,7 +36,8 @@ const SERVER_EVENTS = {
 const SERVER_BID_STATUS = {
   BID_REQUESTED: 'bidRequested',
   BID_RECEIVED: 'bidReceived',
-  BID_WON: 'bidWon'
+  BID_WON: 'bidWon',
+  AUCTION_END: 'auctionEnd'
 }
 
 let auctions = {}
@@ -113,7 +114,9 @@ const onAuctionEnd = (args) => {
 const onBidWon = (args) => {
   const { auctionId, adUnitCode } = args
   const bidId = parseBidId(args)
-  const bid = auctions[auctionId].adUnits[adUnitCode].bids[bidId]
+  const bid = auctions[auctionId].adUnits[adUnitCode].bids.find((bid) => {
+    return bid.bidId == bidId;
+  });
 
   Object.assign(bid, args, {
     bidStatus: SERVER_BID_STATUS.BID_WON,
