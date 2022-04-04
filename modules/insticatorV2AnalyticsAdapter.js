@@ -8,8 +8,8 @@ const baseUrl = 'https://analysis.ingage.tech/'
 
 const ENDPOINTS = {
   AD_RENDER_FAILED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Frender_failed%2Fjsonschema%2F1-0-0',
-  AD_RENDER_SUCCEEDED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Frender_succeeded%2Fjsonschema%2F1-0-0',
-  BID_WON: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fbid_won%2Fjsonschema%2F1-0-0',
+  AD_RENDER_SUCCEEDED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Frender_succeeded%2Fjsonschema%2F2-0-0',
+  BID_WON: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fbid_won%2Fjsonschema%2F2-0-0',
   AUCTION_END: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fauction_end%2Fjsonschema%2F1-0-0'
 }
 
