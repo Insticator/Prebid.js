@@ -1,8 +1,8 @@
 import {expect} from 'chai';
-import {spec} from 'modules/viewdeosDXBidAdapter';
-import {newBidder} from 'src/adapters/bidderFactory';
+import {spec} from 'modules/viewdeosDXBidAdapter.js';
+import {newBidder} from 'src/adapters/bidderFactory.js';
 
-const ENDPOINT = '//ghb.sync.viewdeos.com/auction/';
+const ENDPOINT = 'https://ghb.sync.viewdeos.com/auction/';
 
 const DISPLAY_REQUEST = {
   'bidder': 'viewdeos',
@@ -39,11 +39,10 @@ const SERVER_VIDEO_RESPONSE = {
     'height': 480,
     'cur': 'USD',
     'width': 640,
-    'cpm': 0.9
-  }
-  ]
+    'cpm': 0.9,
+    'adomain': ['a.com']
+  }]
 };
-
 const SERVER_OUSTREAM_VIDEO_RESPONSE = SERVER_VIDEO_RESPONSE;
 
 const SERVER_DISPLAY_RESPONSE = {
@@ -124,7 +123,10 @@ const videoEqResponse = [{
   height: 480,
   width: 640,
   ttl: 3600,
-  cpm: 0.9
+  cpm: 0.9,
+  meta: {
+    advertiserDomains: ['a.com']
+  }
 }];
 
 const displayEqResponse = [{
@@ -137,7 +139,10 @@ const displayEqResponse = [{
   height: 250,
   width: 300,
   ttl: 3600,
-  cpm: 0.9
+  cpm: 0.9,
+  meta: {
+    advertiserDomains: []
+  }
 }];
 
 describe('viewdeosDXBidAdapter', function () {

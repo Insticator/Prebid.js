@@ -1,338 +1,480 @@
 import { expect } from 'chai';
-import * as utils from 'src/utils.js';
-import { spec } from 'modules/insticatorBidAdapter.js';
+import { spec, storage } from '../../../modules/insticatorBidAdapter.js';
+import { newBidder } from 'src/adapters/bidderFactory.js'
 
-describe('Insticator bid adapter', () => {
-  const bidderRequestWithGDPR = {
-    auctionId: 'ccaabb112233',
-    bidderRequestId: '123d12231aa',
-    timeout: 200,
-    refererInfo: {
-      referer: 'http://domain.com/foo',
-    },
-    gdprConsent: {
-      gdprApplies: 1,
-      consentString: 'foobar',
-    },
-  };
+const USER_ID_KEY = 'hb_insticator_uid';
+const USER_ID_DUMMY_VALUE = '74f78609-a92d-4cf1-869f-1b244bbfb5d2';
+const USER_ID_STUBBED = '12345678-1234-1234-1234-123456789abc';
 
-  const validBid = {
+let utils = require('src/utils.js');
+
+describe('InsticatorBidAdapter', function () {
+  const adapter = newBidder(spec);
+
+  const bidderRequestId = '22edbae2733bf6';
+  let bidRequest = {
     bidder: 'insticator',
+    adUnitCode: 'adunit-code',
     params: {
-      adUnitId: '123456',
+      adUnitId: '1a2b3c4d5e6f1a2b3c4d',
     },
-    sizes: [
-      [300, 250],
-      [300, 600],
-    ],
+    sizes: [[300, 250], [300, 600]],
     mediaTypes: {
       banner: {
-        sizes: [
-          [300, 250],
-          [300, 600],
-        ],
-      },
+        sizes: [[300, 250], [300, 600]]
+      }
     },
-    adUnitCode: 'div-gpt-ad-837465923534-0',
-    transactionId: 'f160fc1d-3db4-4dbe-ab1d-b2814e5c2d57',
-    bidId: '1234abcd',
-    bidderRequestId: '123d12231aa',
-    auctionId: 'ccaabb112233',
-  };
-
-  const validBid2 = {
-    bidder: 'insticator',
-    params: {
-      adUnitId: '234567',
+    bidId: '30b31c1838de1e',
+    ortb2Imp: {
+      ext: {
+        gpid: '1111/homepage'
+      }
     },
-    sizes: [[300, 600]],
-    mediaTypes: {
-      banner: {
-        sizes: [[300, 600]],
-      },
+    schain: {
+      ver: '1.0',
+      complete: 1,
+      nodes: [
+        {
+          asi: 'insticator.com',
+          sid: '00001',
+          hp: 1,
+          rid: bidderRequestId
+        }
+      ]
     },
-    adUnitCode: 'div-gpt-ad-4645345744-0',
-    transactionId: 'b47af70a-cecd-4974-8a01-50721d6033cb',
-    bidId: '2345abcd',
-    bidderRequestId: '123d12231aa',
-    auctionId: 'ccaabb112233',
-  };
-
-  const bidderRequest = {
-    auctionId: 'ccaabb112233',
-    bidderRequestId: '123d12231aa',
-    timeout: 200,
-    refererInfo: {
-      referer: 'http://domain.com/foo',
-    },
-    bids: [validBid, validBid2],
-  };
-
-  const validResponse = {
-    id: '123d12231aa',
-    seatbid: [
+    userIdAsEids: [
       {
-        seat: 'insticator',
-        group: 0,
-        bid: [
+        source: 'criteo.com',
+        uids: [
           {
-            id: 'bid123456',
-            w: 300,
-            h: 250,
-            impid: '1234abcd',
-            price: 0.5,
-            crid: '987654321',
-            adm: '<div>ad</div>',
-          },
-        ],
-      },
+            id: '123',
+            atype: 1
+          }
+        ]
+      }
     ],
-    ext: {
-      sync: [
-        {
-          type: 'image',
-          url: 'http://ex.ingage.tech/sync/1234567',
-        },
-      ],
+  };
+
+  let bidderRequest = {
+    bidderRequestId,
+    auctionId: '74f78609-a92d-4cf1-869f-1b244bbfb5d2',
+    timeout: 300,
+    gdprConsent: {
+      consentString: 'BOJ/P2HOJ/P2HABABMAAAAAZ+A==',
+      vendorData: {},
+      gdprApplies: true
+    },
+    refererInfo: {
+      numIframes: 0,
+      reachedTop: true,
+      referer: 'https://example.com',
+      stack: ['https://example.com']
     },
   };
 
-  describe('isBidRequestValid()', () => {
-    it('should return true when required params found', () => {
-      expect(spec.isBidRequestValid(validBid)).to.equal(true);
+  describe('.code', function () {
+    it('should return a bidder code of insticator', function () {
+      expect(spec.code).to.equal('insticator')
+    })
+  })
+
+  describe('inherited functions', function () {
+    it('should exist and be a function', function () {
+      expect(adapter.callBids).to.exist.and.to.be.a('function')
+    })
+  })
+
+  describe('isBidRequestValid', function () {
+    it('should return true if the bid is valid', function () {
+      expect(spec.isBidRequestValid(bidRequest)).to.be.true;
     });
 
-    it('should return true when mediaTypes.banner.sizes are missing, but sizes are specified', () => {
-      const bid = utils.deepClone(validBid);
-      delete bid.mediaTypes.banner.sizes;
-
-      expect(spec.isBidRequestValid(bid)).to.equal(true);
+    it('should return false if there is no adUnitId param', () => {
+      expect(spec.isBidRequestValid({...bidRequest, ...{params: {}}})).to.be.false;
     });
 
-    it('should return true when sizes are missing, but mediaTypes.banner.sizes are specified', () => {
-      const bid = utils.deepClone(validBid);
-      delete bid.sizes;
-
-      expect(spec.isBidRequestValid(bid)).to.equal(true);
+    it('should return false if there is no mediaTypes', () => {
+      expect(spec.isBidRequestValid({...bidRequest, ...{mediaTypes: {}}})).to.be.false;
     });
 
-    it('should return false when adUnitId is not defined', () => {
-      const bid = utils.deepClone(validBid);
-      delete bid.params.adUnitId;
-
-      expect(spec.isBidRequestValid(bid)).to.equal(false);
+    it('should return false if there are no banner sizes and no sizes', () => {
+      bidRequest.mediaTypes.banner = {};
+      expect(spec.isBidRequestValid({...bidRequest, ...{sizes: {}}})).to.be.false;
     });
 
-    it('should return false when there is no banner in mediaTypes', () => {
-      const bid = utils.deepClone(validBid);
-      delete bid.mediaTypes.banner;
-
-      expect(spec.isBidRequestValid(bid)).to.equal(false);
+    it('should return true if there is sizes and no banner sizes', () => {
+      expect(spec.isBidRequestValid(bidRequest)).to.be.true;
     });
 
-    it('should return false when sizes are not specified', () => {
-      const bid = utils.deepClone(validBid);
-      delete bid.sizes;
-      delete bid.mediaTypes.banner.sizes;
-
-      expect(spec.isBidRequestValid(bid)).to.equal(false);
-    });
-
-    it('should return false when sizes are invalid', () => {
-      const bid = utils.deepClone(validBid);
-      delete bid.mediaTypes.banner.sizes;
-
-      bid.sizes = [['123', 'foo']];
-
-      expect(spec.isBidRequestValid(bid)).to.equal(false);
+    it('should return true if there is banner sizes and no sizes', () => {
+      bidRequest.mediaTypes.banner.sizes = [[300, 250], [300, 600]];
+      expect(spec.isBidRequestValid({...bidRequest, ...{sizes: {}}})).to.be.true;
     });
   });
 
-  describe('buildRequests()', () => {
-    it('should build correct request', () => {
-      const requests = spec.buildRequests([validBid, validBid2], bidderRequest);
+  describe('buildRequests', function () {
+    let getDataFromLocalStorageStub, localStorageIsEnabledStub;
+    let getCookieStub, cookiesAreEnabledStub;
+    let sandbox;
 
-      expect(requests).to.have.lengthOf(1);
-      expect(requests[0]).to.deep.include({
-        method: 'POST',
-        url: 'https://ex.hunchme.com/v1/openrtb',
-        options: {
-          contentType: 'application/json',
-          withCredentials: true,
-        },
-      });
+    beforeEach(() => {
+      getDataFromLocalStorageStub = sinon.stub(storage, 'getDataFromLocalStorage');
+      localStorageIsEnabledStub = sinon.stub(storage, 'localStorageIsEnabled');
+      getCookieStub = sinon.stub(storage, 'getCookie');
+      cookiesAreEnabledStub = sinon.stub(storage, 'cookiesAreEnabled');
 
-      expect(JSON.parse(requests[0].data)).to.deep.include({
-        id: '123d12231aa',
-        device: {
-          ext: {
-            cookies: true,
-            localStorage: true,
-          },
-          js: true,
-          w: 100,
-          h: 100,
-        },
-        source: {
-          fd: 1,
-          tid: 'ccaabb112233',
-        },
-        tmax: 200,
-        imp: [
+      sandbox = sinon.sandbox.create();
+      sandbox.stub(utils, 'generateUUID').returns(USER_ID_STUBBED);
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+      getDataFromLocalStorageStub.restore();
+      localStorageIsEnabledStub.restore();
+      getCookieStub.restore();
+      cookiesAreEnabledStub.restore();
+    });
+
+    const serverRequests = spec.buildRequests([bidRequest], bidderRequest);
+    it('should create a request', function () {
+      expect(serverRequests).to.have.length(1);
+    });
+
+    const serverRequest = serverRequests[0];
+    it('should create a request object with method, URL, options and data', function () {
+      expect(serverRequest).to.exist;
+      expect(serverRequest.method).to.exist;
+      expect(serverRequest.url).to.exist;
+      expect(serverRequest.options).to.exist;
+      expect(serverRequest.data).to.exist;
+    });
+
+    it('should return POST method', function () {
+      expect(serverRequest.method).to.equal('POST');
+    });
+
+    it('should return valid URL', function () {
+      expect(serverRequest.url).to.equal('https://ex.ingage.tech/v1/openrtb');
+    });
+
+    it('should return valid options', function () {
+      expect(serverRequest.options).to.be.an('object');
+      expect(serverRequest.options.contentType).to.equal('application/json');
+      expect(serverRequest.options.withCredentials).to.be.true;
+    });
+
+    it('should return valid data if array of bids is valid', function () {
+      localStorageIsEnabledStub.returns(true);
+      cookiesAreEnabledStub.returns(false);
+      localStorage.setItem(USER_ID_KEY, USER_ID_DUMMY_VALUE);
+
+      const requests = spec.buildRequests([bidRequest], bidderRequest);
+      const data = JSON.parse(requests[0].data);
+
+      expect(data).to.be.an('object');
+      expect(data).to.have.all.keys('id', 'tmax', 'source', 'site', 'device', 'regs', 'user', 'imp', 'ext');
+      expect(data.id).to.equal(bidderRequest.bidderRequestId);
+      expect(data.tmax).to.equal(bidderRequest.timeout);
+      expect(data.source).to.have.all.keys('fd', 'tid', 'ext');
+      expect(data.source.fd).to.equal(1);
+      expect(data.source.tid).to.equal(bidderRequest.auctionId);
+      expect(data.source.ext).to.have.property('schain').to.deep.equal({
+        ver: '1.0',
+        complete: 1,
+        nodes: [
           {
-            banner: {
-              format: [
-                {
-                  w: 300,
-                  h: 250,
-                },
-                {
-                  w: 300,
-                  h: 600,
-                },
-              ],
+            asi: 'insticator.com',
+            sid: '00001',
+            hp: 1,
+            rid: bidderRequest.bidderRequestId
+          }
+        ]
+      });
+      expect(data.site).to.be.an('object');
+      expect(data.site.domain).not.to.be.empty;
+      expect(data.site.page).not.to.be.empty;
+      expect(data.site.ref).to.equal(bidderRequest.refererInfo.referer);
+      expect(data.device).to.be.an('object');
+      expect(data.device.w).to.equal(window.innerWidth);
+      expect(data.device.h).to.equal(window.innerHeight);
+      expect(data.device.js).to.equal(true);
+      expect(data.device.ext).to.be.an('object');
+      expect(data.device.ext.localStorage).to.equal(true);
+      expect(data.device.ext.cookies).to.equal(false);
+      expect(data.regs).to.be.an('object');
+      expect(data.regs.ext.gdpr).to.equal(1);
+      expect(data.regs.ext.gdprConsentString).to.equal(bidderRequest.gdprConsent.consentString);
+      expect(data.user).to.be.an('object');
+      expect(data.user.id).to.equal(USER_ID_DUMMY_VALUE);
+      expect(data.user.ext).to.have.property('eids');
+      expect(data.user.ext.eids).to.deep.equal([
+        {
+          source: 'criteo.com',
+          uids: [
+            {
+              id: '123',
+              atype: 1
+            }
+          ]
+        }
+      ]);
+      expect(data.imp).to.be.an('array').that.have.lengthOf(1);
+      expect(data.imp).to.deep.equal([{
+        id: bidRequest.bidId,
+        tagid: bidRequest.adUnitCode,
+        banner: {
+          format: [
+            {w: 300, h: 250},
+            {w: 300, h: 600},
+          ]
+        },
+        ext: {
+          gpid: bidRequest.ortb2Imp.ext.gpid,
+          insticator: {
+            adUnitId: bidRequest.params.adUnitId,
+          },
+        }
+      }]);
+      expect(data.ext).to.be.an('object');
+      expect(data.ext.insticator).to.be.an('object')
+      expect(data.ext.insticator).to.deep.equal({
+        adapter: {
+          vendor: 'prebid',
+          prebid: '$prebid.version$'
+        }
+      });
+    });
+
+    it('should generate new userId if not valid user is stored', function () {
+      localStorageIsEnabledStub.returns(true);
+      localStorage.setItem(USER_ID_KEY, 'fake-user-id');
+
+      const requests = spec.buildRequests([bidRequest], bidderRequest);
+      const data = JSON.parse(requests[0].data);
+
+      expect(data.user.id).to.equal(USER_ID_STUBBED);
+    });
+    it('should return empty regs object if no gdprConsent is passed', function () {
+      const requests = spec.buildRequests([bidRequest], {...bidderRequest, ...{gdprConsent: false}});
+      const data = JSON.parse(requests[0].data);
+      expect(data.regs).to.be.an('object').that.is.empty;
+    });
+    it('should return empty array if no valid requests are passed', function () {
+      expect(spec.buildRequests([], bidderRequest)).to.be.an('array').that.have.lengthOf(0);
+    });
+  });
+
+  describe('interpretResponse', function () {
+    const bidRequests = {
+      method: 'POST',
+      url: 'https://ex.ingage.tech/v1/openrtb',
+      options: {
+        contentType: 'application/json',
+        withCredentials: true,
+      },
+      data: '',
+      bidderRequest: {
+        bidderRequestId: '22edbae2733bf6',
+        auctionId: '74f78609-a92d-4cf1-869f-1b244bbfb5d2',
+        timeout: 300,
+        bids: [
+          {
+            bidder: 'insticator',
+            params: {
+              adUnitId: '1a2b3c4d5e6f1a2b3c4d'
             },
-            ext: {
-              insticator: {
-                adUnitId: '123456',
-              },
+            adUnitCode: 'adunit-code-1',
+            sizes: [[300, 250], [300, 600]],
+            mediaTypes: {
+              banner: {
+                sizes: [[300, 250], [300, 600]]
+              }
             },
-            id: '1234abcd',
-            tagid: 'div-gpt-ad-837465923534-0',
+            bidId: 'bid1',
           },
           {
-            banner: {
-              format: [
-                {
-                  w: 300,
-                  h: 600,
-                },
-              ],
+            bidder: 'insticator',
+            params: {
+              adUnitId: '1a2b3c4d5e6f1a2b3c4d'
             },
-            ext: {
-              insticator: {
-                adUnitId: '234567',
+            adUnitCode: 'adunit-code-2',
+            sizes: [[120, 600], [300, 600], [160, 600]],
+            mediaTypes: {
+              banner: {
+                sizes: [[300, 250], [300, 600]]
+              }
+            },
+            bidId: 'bid2',
+          },
+          {
+            bidder: 'insticator',
+            params: {
+              adUnitId: '1a2b3c4d5e6f1a2b3c4d'
+            },
+            adUnitCode: 'adunit-code-3',
+            sizes: [[120, 600], [300, 600], [160, 600]],
+            mediaTypes: {
+              banner: {
+                sizes: [[300, 250], [300, 600]]
+              }
+            },
+            bidId: 'bid3',
+          }
+        ]
+      }
+    };
+
+    const bidResponse = {
+      body: {
+        id: '22edbae2733bf6',
+        bidid: 'foo9876',
+        cur: 'USD',
+        seatbid: [
+          {
+            seat: 'some-dsp',
+            bid: [
+              {
+                impid: 'bid1',
+                crid: 'crid1',
+                price: 0.5,
+                w: 300,
+                h: 200,
+                adm: 'adm1',
+                exp: 60,
+                adomain: ['test1.com'],
+                ext: {
+                  meta: {
+                    test: 1
+                  }
+                }
               },
-            },
-            id: '2345abcd',
-            tagid: 'div-gpt-ad-4645345744-0',
+              {
+                impid: 'bid2',
+                crid: 'crid2',
+                price: 1.5,
+                w: 600,
+                h: 200,
+                adm: 'adm2',
+                adomain: ['test2.com'],
+              },
+              {
+                impid: 'bid3',
+                crid: 'crid3',
+                price: 5.0,
+                w: 300,
+                h: 200,
+                adm: 'adm3',
+                adomain: ['test3.com'],
+              }
+            ],
           },
-        ],
+        ]
+      }
+    };
+
+    const prebidResponse = [
+      {
+        requestId: 'bid1',
+        creativeId: 'crid1',
+        cpm: 0.5,
+        currency: 'USD',
+        netRevenue: true,
+        ttl: 60,
+        width: 300,
+        height: 200,
+        mediaType: 'banner',
+        ad: 'adm1',
+        adUnitCode: 'adunit-code-1',
+        meta: {
+          advertiserDomains: ['test1.com'],
+          test: 1
+        }
+      },
+      {
+        requestId: 'bid2',
+        creativeId: 'crid2',
+        cpm: 1.5,
+        currency: 'USD',
+        netRevenue: true,
+        ttl: 300,
+        width: 600,
+        height: 200,
+        mediaType: 'banner',
+        meta: {
+          advertiserDomains: [
+            'test2.com'
+          ]
+        },
+        ad: 'adm2',
+        adUnitCode: 'adunit-code-2',
+      },
+      {
+        requestId: 'bid3',
+        creativeId: 'crid3',
+        cpm: 5.0,
+        currency: 'USD',
+        netRevenue: true,
+        ttl: 300,
+        width: 300,
+        height: 200,
+        mediaType: 'banner',
+        meta: {
+          advertiserDomains: [
+            'test3.com'
+          ]
+        },
+        ad: 'adm3',
+        adUnitCode: 'adunit-code-3',
+      },
+    ];
+
+    it('should map bidResponse to prebidResponse', function () {
+      const response = spec.interpretResponse(bidResponse, bidRequests);
+      response.forEach((resp, i) => {
+        expect(resp).to.deep.equal(prebidResponse[i]);
       });
     });
 
-    it('should include in request GDPR options if available', () => {
-      const requests = spec.buildRequests(
-        [validBid, validBid2],
-        bidderRequestWithGDPR
-      );
-
-      expect(JSON.parse(requests[0].data)).to.deep.include({
-        regs: {
-          ext: {
-            gdpr: 1,
-            gdprConsentString: 'foobar',
-          },
-        },
-      });
+    it('should return empty response if bidderRequestId is invalid', function () {
+      const response = Object.assign({}, bidResponse);
+      response.body.id = 'fake-id';
+      expect(spec.interpretResponse(response, bidRequests)).to.have.length(0);
     });
 
-    it('should generate and pass user id', () => {
-      localStorage.removeItem('hb_insticator_uid');
-      utils.setCookie('hb_insticator_uid');
-
-      const requests = spec.buildRequests([validBid, validBid2], bidderRequest);
-      const rtbRequest = JSON.parse(requests[0].data);
-
-      expect(rtbRequest.user.id).to.have.lengthOf(36);
-    });
-
-    it('should pass user id if available', () => {
-      localStorage.setItem(
-        'hb_insticator_uid',
-        '77016c8d-6c6e-40cb-8801-1060089b5c60'
-      );
-
-      const requests = spec.buildRequests([validBid, validBid2], bidderRequest);
-      const rtbRequest = JSON.parse(requests[0].data);
-
-      expect(rtbRequest.user.id).to.equal(
-        '77016c8d-6c6e-40cb-8801-1060089b5c60'
-      );
-    });
-
-    it('should regenerate user id if it is invalid', () => {
-      localStorage.setItem('hb_insticator_uid', 'foo');
-
-      const requests = spec.buildRequests([validBid, validBid2], bidderRequest);
-      const rtbRequest = JSON.parse(requests[0].data);
-
-      expect(rtbRequest.user.id).to.have.lengthOf(36);
+    it('should return empty response if there is no seatbid array in response', function () {
+      const response = Object.assign({}, bidResponse);
+      delete response.body.seatbid;
+      expect(spec.interpretResponse(response, bidRequests)).to.have.length(0);
     });
   });
 
-  describe('interpretResponse()', () => {
-    it('should correctly interpret valid response', () => {
-      const bids = spec.interpretResponse(
-        { body: validResponse },
-        { bidderRequest }
-      );
+  describe('getUserSyncs', function () {
+    const bidResponse = [{
+      body: {
+        ext: {
+          sync: [{
+            code: 'so',
+            delay: 0
+          }]
+        }
+      }
+    }];
 
-      expect(bids).to.deep.equal([
-        {
-          requestId: '1234abcd',
-          width: 300,
-          height: 250,
-          ttl: 300,
-          cpm: 0.5,
-          currency: 'USD',
-          creativeId: '987654321',
-          mediaType: 'banner',
-          netRevenue: true,
-          adUnitCode: 'div-gpt-ad-837465923534-0',
-          ad: '<div>ad</div>',
-        },
-      ]);
-    });
+    it('should return one user sync', function () {
+      expect(spec.getUserSyncs({}, bidResponse)).to.deep.equal([{
+        code: 'so',
+        delay: 0
+      }]);
+    })
 
-    it('should return not bids if response id does not match bidderRequestId', () => {
-      const body = utils.deepClone(validResponse);
-      body.id = '123';
+    it('should return an empty array when sync is enabled but there are no bidResponses', function () {
+      expect(spec.getUserSyncs({}, [])).to.have.length(0);
+    })
 
-      const bids = spec.interpretResponse({ body }, { bidderRequest });
-
-      expect(bids).to.deep.equal([]);
-    });
-
-    it('should return not bids if response does not include seatbid', () => {
-      const body = utils.deepClone(validResponse);
-      delete body.seatbid;
-
-      const bids = spec.interpretResponse({ body }, { bidderRequest });
-
-      expect(bids).to.deep.equal([]);
-    });
-
-    it('should return not bids if response does not include any bids', () => {
-      const body = utils.deepClone(validResponse);
-      body.seatbid = [];
-
-      const bids = spec.interpretResponse({ body }, { bidderRequest });
-
-      expect(bids).to.deep.equal([]);
-    });
-  });
-
-  describe('getUserSyncs()', () => {
-    it('should return user syncs if there are included in the response', () => {
-      const syncs = spec.getUserSyncs({}, [{ body: validResponse }]);
-
-      expect(syncs).to.deep.equal([
-        {
-          type: 'image',
-          url: 'http://ex.ingage.tech/sync/1234567',
-        },
-      ]);
-    });
+    it('should return an empty array when sync is enabled but no sync ext returned', function () {
+      const response = Object.assign({}, bidResponse[0]);
+      delete response.body.ext.sync;
+      expect(spec.getUserSyncs({}, [response])).to.have.length(0);
+    })
   });
 });

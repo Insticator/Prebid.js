@@ -1,21 +1,18 @@
-import { config } from '../src/config.js';
-import { BANNER } from '../src/mediaTypes.js';
-import { registerBidder } from '../src/adapters/bidderFactory.js';
-import {
-  cookiesAreEnabled,
-  deepAccess,
-  generateUUID,
-  getCookie,
-  localStorageIsEnabled,
-  logError,
-  setCookie,
-} from '../src/utils.js';
+import {config} from '../src/config.js';
+import {BANNER} from '../src/mediaTypes.js';
+import {registerBidder} from '../src/adapters/bidderFactory.js';
+import {deepAccess, generateUUID, logError, isArray} from '../src/utils.js';
+import {getStorageManager} from '../src/storageManager.js';
+import find from 'core-js-pure/features/array/find.js';
 
 const BIDDER_CODE = 'insticator';
-const ENDPOINT = 'https://ex.hunchme.com/v1/openrtb'; // staging endpoint!
+const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
 const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_COOKIE_EXP = 2592000000; // 30 days
 const BID_TTL = 300; // 5 minutes
+const GVLID = 910;
+
+export const storage = getStorageManager(GVLID, BIDDER_CODE);
 
 config.setDefaults({
   insticator: {
@@ -27,10 +24,10 @@ config.setDefaults({
 function getUserId() {
   let uid;
 
-  if (localStorageIsEnabled()) {
+  if (storage.localStorageIsEnabled()) {
     uid = localStorage.getItem(USER_ID_KEY);
   } else {
-    uid = getCookie(USER_ID_KEY);
+    uid = storage.getCookie(USER_ID_KEY);
   }
 
   if (uid && uid.length !== 36) {
@@ -41,18 +38,24 @@ function getUserId() {
 }
 
 function setUserId(userId) {
-  if (localStorageIsEnabled()) {
+  if (storage.localStorageIsEnabled()) {
     localStorage.setItem(USER_ID_KEY, userId);
   }
 
-  if (cookiesAreEnabled()) {
+  if (storage.cookiesAreEnabled()) {
     const expires = new Date(Date.now() + USER_ID_COOKIE_EXP).toISOString();
-    setCookie(USER_ID_KEY, userId, expires);
+    storage.setCookie(USER_ID_KEY, userId, expires);
   }
 }
 
 function buildImpression(bidRequest) {
   const format = [];
+  const ext = {
+    insticator: {
+      adUnitId: bidRequest.params.adUnitId,
+    },
+  }
+
   const sizes =
     deepAccess(bidRequest, 'mediaTypes.banner.sizes') || bidRequest.sizes;
 
@@ -63,17 +66,19 @@ function buildImpression(bidRequest) {
     });
   }
 
+  const gpid = deepAccess(bidRequest, 'ortb2Imp.ext.gpid');
+
+  if (gpid) {
+    ext.gpid = gpid;
+  }
+
   return {
     id: bidRequest.bidId,
     tagid: bidRequest.adUnitCode,
     banner: {
       format,
     },
-    ext: {
-      insticator: {
-        adUnitId: bidRequest.params.adUnitId,
-      },
-    },
+    ext,
   };
 }
 
@@ -83,8 +88,8 @@ function buildDevice() {
     h: window.innerHeight,
     js: true,
     ext: {
-      localStorage: localStorageIsEnabled(),
-      cookies: cookiesAreEnabled(),
+      localStorage: storage.localStorageIsEnabled(),
+      cookies: storage.cookiesAreEnabled(),
     },
   };
 
@@ -120,6 +125,24 @@ function buildUser() {
   };
 }
 
+function extractSchain(bids, requestId) {
+  if (!bids || bids.length === 0 || !bids[0].schain) return;
+
+  const schain = bids[0].schain;
+  if (schain && schain.nodes && schain.nodes.length && schain.nodes[0]) {
+    schain.nodes[0].rid = requestId;
+  }
+
+  return schain;
+}
+
+function extractEids(bids) {
+  if (!bids) return;
+
+  const bid = bids.find(bid => isArray(bid.userIdAsEids) && bid.userIdAsEids.length > 0);
+  return bid ? bid.userIdAsEids : bids[0].userIdAsEids;
+}
+
 function buildRequest(validBidRequests, bidderRequest) {
   const req = {
     id: bidderRequest.bidderRequestId,
@@ -137,21 +160,50 @@ function buildRequest(validBidRequests, bidderRequest) {
     regs: buildRegs(bidderRequest),
     user: buildUser(),
     imp: validBidRequests.map((bidRequest) => buildImpression(bidRequest)),
+    ext: {
+      insticator: {
+        adapter: {
+          vendor: 'prebid',
+          prebid: '$prebid.version$'
+        }
+      }
+    }
   };
 
   const params = config.getConfig('insticator.params');
 
   if (params) {
     req.ext = {
-      insticator: params,
+      insticator: {...req.ext.insticator, ...params},
     };
+  }
+
+  const schain = extractSchain(validBidRequests, bidderRequest.bidderRequestId);
+
+  if (schain) {
+    req.source.ext = { schain };
+  }
+
+  const eids = extractEids(validBidRequests);
+
+  if (eids) {
+    req.user.ext = { eids };
   }
 
   return req;
 }
 
 function buildBid(bid, bidderRequest) {
-  const originalBid = bidderRequest.bids.find((b) => b.bidId === bid.impid);
+  const originalBid = find(bidderRequest.bids, (b) => b.bidId === bid.impid);
+  let meta = {}
+
+  if (bid.ext && bid.ext.meta) {
+    meta = bid.ext.meta
+  }
+
+  if (bid.adomain) {
+    meta.advertiserDomains = bid.adomain
+  }
 
   return {
     requestId: bid.impid,
@@ -165,6 +217,7 @@ function buildBid(bid, bidderRequest) {
     mediaType: 'banner',
     ad: bid.adm,
     adUnitCode: originalBid.adUnitCode,
+    ...(Object.keys(meta).length > 0 ? {meta} : {})
   };
 }
 
@@ -191,6 +244,7 @@ function validateSizes(sizes) {
 
 export const spec = {
   code: BIDDER_CODE,
+  gvlid: GVLID,
   supportedMediaTypes: [BANNER],
 
   isBidRequestValid: function (bid) {
@@ -217,11 +271,13 @@ export const spec = {
 
   buildRequests: function (validBidRequests, bidderRequest) {
     const requests = [];
+    let endpointUrl = config.getConfig('insticator.endpointUrl') || ENDPOINT;
+    endpointUrl = endpointUrl.replace(/^http:/, 'https:');
 
     if (validBidRequests.length > 0) {
       requests.push({
         method: 'POST',
-        url: config.getConfig('insticator.endpointUrl') || ENDPOINT,
+        url: endpointUrl,
         options: {
           contentType: 'application/json',
           withCredentials: true,

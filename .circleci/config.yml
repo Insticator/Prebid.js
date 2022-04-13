@@ -3,12 +3,12 @@
 # Check https://circleci.com/docs/2.0/language-javascript/ for more details
 #
 
-aliases: 
+aliases:
   - &environment
       docker:
         # specify the version you desire here
-        - image: circleci/node:8.9.0
-        
+        - image: circleci/node:12.16.1
+      resource_class: xlarge
         # Specify service dependencies here if necessary
         # CircleCI maintains a library of pre-built images
         # documented at https://circleci.com/docs/2.0/circleci-images/
@@ -16,23 +16,23 @@ aliases:
       working_directory: ~/Prebid.js
 
   - &restore_dep_cache
-      keys:
-        - v1-dependencies-{{ checksum "package.json" }}
-        # fallback to using the latest cache if no exact match is found
-        - v1-dependencies-
+    keys:
+      - v1-dependencies-{{ checksum "package.json" }}
+      # fallback to using the latest cache if no exact match is found
+      - v1-dependencies-
 
   - &save_dep_cache
-      paths:
-        - node_modules
-      key: v1-dependencies-{{ checksum "package.json" }}
+    paths:
+      - node_modules
+    key: v1-dependencies-{{ checksum "package.json" }}
 
   - &install
-      name: Install gulp cli
-      command: sudo npm install -g gulp-cli
+    name: Install gulp cli
+    command: sudo npm install -g gulp-cli
 
 version: 2.1
 orbs:
-  aws-s3: circleci/aws-s3@1.0.12
+  aws-s3: circleci/aws-s3@2.0.0
 jobs:
   build:
     <<: *environment
@@ -50,7 +50,7 @@ jobs:
           from: build/dist/prebid.js
           to: '"$UPLOAD_DEST"'
           arguments: --cache-control 'max-age=86400'
-      
+
 workflows:
   version: 2
   build:
@@ -59,4 +59,5 @@ workflows:
           context: org-aws
           filters:
             branches:
-              only: master
+              only:
+                - master

@@ -1,11 +1,11 @@
-import * as utils from '../src/utils';
-import {registerBidder} from '../src/adapters/bidderFactory';
-import {VIDEO, BANNER} from '../src/mediaTypes';
-import {Renderer} from '../src/Renderer';
-import findIndex from 'core-js/library/fn/array/find-index';
+import * as utils from '../src/utils.js';
+import {registerBidder} from '../src/adapters/bidderFactory.js';
+import {VIDEO, BANNER} from '../src/mediaTypes.js';
+import {Renderer} from '../src/Renderer.js';
+import findIndex from 'core-js-pure/features/array/find-index.js';
 
-const URL = '//ghb.sync.viewdeos.com/auction/';
-const OUTSTREAM_SRC = '//player.sync.viewdeos.com/outstream-unit/2.11/outstream-unit.min.js';
+const URL = 'https://ghb.sync.viewdeos.com/auction/';
+const OUTSTREAM_SRC = 'https://player.sync.viewdeos.com/outstream-unit/2.01/outstream.min.js';
 const BIDDER_CODE = 'viewdeosDX';
 const OUTSTREAM = 'outstream';
 const DISPLAY = 'display';
@@ -13,6 +13,7 @@ const DISPLAY = 'display';
 export const spec = {
   code: BIDDER_CODE,
   aliases: ['viewdeos'],
+  gvlid: 924,
   supportedMediaTypes: [VIDEO, BANNER],
   isBidRequestValid: function (bid) {
     return !!utils.deepAccess(bid, 'params.aid');
@@ -189,7 +190,10 @@ function createBid(bidResponse, mediaType, bidderParams) {
     cpm: bidResponse.cpm,
     netRevenue: true,
     mediaType,
-    ttl: 3600
+    ttl: 3600,
+    meta: {
+      advertiserDomains: bidResponse.adomain || []
+    }
   };
 
   if (mediaType === DISPLAY) {
