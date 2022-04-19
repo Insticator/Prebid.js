@@ -72,11 +72,18 @@ function buildImpression(bidRequest) {
     ext.gpid = gpid;
   }
 
+  const instl = deepAccess(bidRequest, 'ortb2Imp.instl')
+  const secure = location.protocol === 'https:' ? 1 : 0;
+  const pos = deepAccess(bidRequest, 'mediaTypes.banner.pos');
+
   return {
     id: bidRequest.bidId,
     tagid: bidRequest.adUnitCode,
+    instl,
+    secure,
     banner: {
       format,
+      pos,
     },
     ext,
   };
@@ -115,13 +122,17 @@ function buildRegs(bidderRequest) {
   return {};
 }
 
-function buildUser() {
+function buildUser(bid) {
   const userId = getUserId() || generateUUID();
+  const yob = deepAccess(bid, 'params.user.yob')
+  const gender = deepAccess(bid, 'params.user.gender')
 
   setUserId(userId);
 
   return {
     id: userId,
+    yob,
+    gender,
   };
 }
 
@@ -158,7 +169,7 @@ function buildRequest(validBidRequests, bidderRequest) {
     },
     device: buildDevice(),
     regs: buildRegs(bidderRequest),
-    user: buildUser(),
+    user: buildUser(validBidRequests[0]),
     imp: validBidRequests.map((bidRequest) => buildImpression(bidRequest)),
     ext: {
       insticator: {
