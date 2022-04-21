@@ -30,6 +30,10 @@ aliases:
     name: Install gulp cli
     command: sudo npm install -g gulp-cli
 
+  - &run_unit_test
+    name: Run unit tests
+    command: gulp test
+
 version: 2.1
 orbs:
   aws-s3: circleci/aws-s3@2.0.0
@@ -66,6 +70,18 @@ jobs:
           from: build/dist/prebid.js
           to: '"$UPLOAD_DEST"'
           arguments: --cache-control 'max-age=86400'
+  build_develop:
+    <<: *environment
+    steps:
+      - checkout
+      - restore_cache: *restore_dep_cache
+      - run: npm install
+      - save_cache: *save_dep_cache
+      - run: *install
+      - run: *run_unit_test
+      - run:
+          name: Build Prebid.js version 6
+          command: gulp build --modules=modules.json
 
 
 workflows:
@@ -78,6 +94,12 @@ workflows:
             branches:
               only:
                 - master
+      - build_develop:
+          context: org-aws
+          filters:
+            branches:
+              only:
+                - develop
       - build_v6:
           context: org-aws
           filters:
