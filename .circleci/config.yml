@@ -32,7 +32,7 @@ aliases:
 
   - &run_unit_test
     name: Run unit tests
-    command: gulp test
+    command: CHROME_BIN=/usr/bin/google-chrome gulp test
 
 version: 2.1
 orbs:
