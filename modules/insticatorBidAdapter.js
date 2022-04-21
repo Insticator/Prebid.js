@@ -1,8 +1,13 @@
-import {config} from '../src/config.js';
-import {BANNER} from '../src/mediaTypes.js';
-import {registerBidder} from '../src/adapters/bidderFactory.js';
-import {deepAccess, generateUUID, logError, isArray} from '../src/utils.js';
-import {getStorageManager} from '../src/storageManager.js';
+import { config } from '../src/config.js';
+import { BANNER } from '../src/mediaTypes.js';
+import { registerBidder } from '../src/adapters/bidderFactory.js';
+import {
+  deepAccess,
+  generateUUID,
+  logError,
+  isArray,
+} from '../src/utils.js';
+import { getStorageManager } from '../src/storageManager.js';
 import find from 'core-js-pure/features/array/find.js';
 
 const BIDDER_CODE = 'insticator';
@@ -11,6 +16,7 @@ const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_COOKIE_EXP = 2592000000; // 30 days
 const BID_TTL = 300; // 5 minutes
 const GVLID = 910;
+const ASI_REGEX = /^insticator\.com$/;
 
 export const storage = getStorageManager(GVLID, BIDDER_CODE);
 

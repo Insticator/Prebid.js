@@ -16,7 +16,6 @@
   "insticatorAnalyticsAdapter",
   "insticatorV2AnalyticsAdapter",
   "ixBidAdapter",
-  "mediagoBidAdapter",
   "onetagBidAdapter",
   "openxBidAdapter",
   "pubmaticBidAdapter",
