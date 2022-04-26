@@ -238,22 +238,22 @@ function parseBidId(bid) {
 }
 
 function mapBid({
-                  bidStatus,
-                  start,
-                  end,
-                  mediaType,
-                  creativeId,
-                  originalCpm,
-                  originalCurrency,
-                  source,
-                  netRevenue,
-                  currency,
-                  width,
-                  height,
-                  timeToRespond,
-                  responseTimestamp,
-                  ...rest
-                }, eventType) {
+  bidStatus,
+  start,
+  end,
+  mediaType,
+  creativeId,
+  originalCpm,
+  originalCurrency,
+  source,
+  netRevenue,
+  currency,
+  width,
+  height,
+  timeToRespond,
+  responseTimestamp,
+  ...rest
+}, eventType) {
   const bidObj = {
     bst: bidStatus,
     s: start,
