@@ -280,16 +280,6 @@ describe('BeachfrontAdapter', function () {
         expect(data.regs.ext.us_privacy).to.equal(uspConsent);
       });
 
-      it('must add US privacy data to the request', function () {
-        const bidRequest = bidRequests[0];
-        bidRequest.mediaTypes = { video: {} };
-        const uspConsent = '2112YYZ';
-        const bidderRequest = { uspConsent };
-        const requests = spec.buildRequests([ bidRequest ], bidderRequest);
-        const data = requests[0].data;
-        expect(data.regs.ext.us_privacy).to.equal(uspConsent);
-      });
-
       it('must add GDPR consent data to the request', function () {
         const bidRequest = bidRequests[0];
         bidRequest.mediaTypes = { video: {} };
