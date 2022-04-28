@@ -14,6 +14,7 @@
   "improvedigitalBidAdapter",
   "insticatorBidAdapter",
   "insticatorAnalyticsAdapter",
+  "insticatorV2AnalyticsAdapter",
   "ixBidAdapter",
   "onetagBidAdapter",
   "openxBidAdapter",

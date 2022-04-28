@@ -56,6 +56,12 @@ function setUserId(userId) {
 
 function buildImpression(bidRequest) {
   const format = [];
+  const ext = {
+    insticator: {
+      adUnitId: bidRequest.params.adUnitId,
+    },
+  }
+
   const sizes =
     deepAccess(bidRequest, 'mediaTypes.banner.sizes') || bidRequest.sizes;
 
@@ -66,17 +72,26 @@ function buildImpression(bidRequest) {
     });
   }
 
+  const gpid = deepAccess(bidRequest, 'ortb2Imp.ext.gpid');
+
+  if (gpid) {
+    ext.gpid = gpid;
+  }
+
+  const instl = deepAccess(bidRequest, 'ortb2Imp.instl')
+  const secure = location.protocol === 'https:' ? 1 : 0;
+  const pos = deepAccess(bidRequest, 'mediaTypes.banner.pos');
+
   return {
     id: bidRequest.bidId,
     tagid: bidRequest.adUnitCode,
+    instl,
+    secure,
     banner: {
       format,
+      pos,
     },
-    ext: {
-      insticator: {
-        adUnitId: bidRequest.params.adUnitId,
-      },
-    },
+    ext,
   };
 }
 
@@ -113,25 +128,24 @@ function buildRegs(bidderRequest) {
   return {};
 }
 
-function buildUser() {
+function buildUser(bid) {
   const userId = getUserId() || generateUUID();
+  const yob = deepAccess(bid, 'params.user.yob')
+  const gender = deepAccess(bid, 'params.user.gender')
 
   setUserId(userId);
 
   return {
     id: userId,
+    yob,
+    gender,
   };
 }
 
 function extractSchain(bids, requestId) {
-  if (!bids) return;
+  if (!bids || bids.length === 0 || !bids[0].schain) return;
 
-  const bid = bids.find(bid =>
-    bid.schain &&
-    bid.schain.nodes &&
-    bid.schain.nodes.find(node => ASI_REGEX.test(node.asi))
-  );
-  const schain = bid ? bid.schain : bids[0].schain;
+  const schain = bids[0].schain;
   if (schain && schain.nodes && schain.nodes.length && schain.nodes[0]) {
     schain.nodes[0].rid = requestId;
   }
@@ -161,7 +175,7 @@ function buildRequest(validBidRequests, bidderRequest) {
     },
     device: buildDevice(),
     regs: buildRegs(bidderRequest),
-    user: buildUser(),
+    user: buildUser(validBidRequests[0]),
     imp: validBidRequests.map((bidRequest) => buildImpression(bidRequest)),
     ext: {
       insticator: {
@@ -187,7 +201,7 @@ function buildRequest(validBidRequests, bidderRequest) {
     req.source.ext = { schain };
   }
 
-  const eids = extractEids(bidderRequest.bids);
+  const eids = extractEids(validBidRequests);
 
   if (eids) {
     req.user.ext = { eids };
@@ -198,7 +212,15 @@ function buildRequest(validBidRequests, bidderRequest) {
 
 function buildBid(bid, bidderRequest) {
   const originalBid = find(bidderRequest.bids, (b) => b.bidId === bid.impid);
-  const meta = Object.assign({}, bid.ext && bid.ext.meta || {}, { advertiserDomains: bid.adomain });
+  let meta = {}
+
+  if (bid.ext && bid.ext.meta) {
+    meta = bid.ext.meta
+  }
+
+  if (bid.adomain) {
+    meta.advertiserDomains = bid.adomain
+  }
 
   return {
     requestId: bid.impid,
@@ -212,7 +234,7 @@ function buildBid(bid, bidderRequest) {
     mediaType: 'banner',
     ad: bid.adm,
     adUnitCode: originalBid.adUnitCode,
-    meta: meta,
+    ...(Object.keys(meta).length > 0 ? {meta} : {})
   };
 }
 

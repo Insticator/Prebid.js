@@ -46,6 +46,8 @@ The example is published publically at: https://storage.googleapis.com/adloox-ad
 
 **N.B.** this will show a [CORS error](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors) for the request `https://p.adlooxtracking.com/q?...` that is safe to ignore on the public example page; it is related to the [RTD integration](./adlooxRtdProvider.md) which requires pre-registration of your sites
 
+**N.B.** this will show a [CORS error](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors) for the request `https://p.adlooxtracking.com/q?...` that is safe to ignore on the public example page; it is related to the [RTD integration](./adlooxRtdProvider.md) which requires pre-registration of your sites
+
 It is recommended you use [Google Chrome's 'Local Overrides' located in the Developer Tools panel](https://www.trysmudford.com/blog/chrome-local-overrides/) to explore the example without the inconvience of having to run your own web server.
 
 #### Pre-built `prebid.js`
