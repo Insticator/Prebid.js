@@ -95,6 +95,7 @@ function buildImpression(bidRequest) {
 }
 
 function buildDevice() {
+  const deviceConfig = config.getConfig('device');
   const device = {
     w: window.innerWidth,
     h: window.innerHeight,
@@ -104,8 +105,6 @@ function buildDevice() {
       cookies: storage.cookiesAreEnabled(),
     },
   };
-
-  const deviceConfig = config.getConfig('device');
 
   if (typeof deviceConfig === 'object') {
     Object.assign(device, deviceConfig);
