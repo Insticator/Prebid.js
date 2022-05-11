@@ -3,14 +3,17 @@ import adapterManager from '../src/adapterManager.js'
 import CONSTANTS from '../src/constants.json'
 import * as utils from '../src/utils.js'
 import { ajax } from '../src/ajax.js'
+import { getStorageManager } from '../src/storageManager.js';
+export const storage = getStorageManager();
 
 const baseUrl = 'https://analysis.ingage.tech/'
 
 const ENDPOINTS = {
-  AD_RENDER_FAILED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Frender_failed%2Fjsonschema%2F1-0-0',
-  AD_RENDER_SUCCEEDED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Frender_succeeded%2Fjsonschema%2F2-0-0',
-  BID_WON: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fbid_won%2Fjsonschema%2F2-0-0',
-  AUCTION_END: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fauction_end%2Fjsonschema%2F1-0-0'
+  AD_RENDER_FAILED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Frender_failed%2Fjsonschema%2F2-0-0',
+  AD_RENDER_SUCCEEDED: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Frender_succeeded%2Fjsonschema%2F3-0-0',
+  BID_WON: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fbid_won%2Fjsonschema%2F3-0-0',
+  AUCTION_END: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fauction_end%2Fjsonschema%2F2-0-0',
+  BID_TIMEOUT: baseUrl + 'com.snowplowanalytics.iglu/v1?schema=iglu%3Acom.insticator%2Fbid_timeout%2Fjsonschema%2F2-0-0'
 }
 
 const analyticsType = 'endpoint'
@@ -20,6 +23,7 @@ const {
   AUCTION_INIT,
   BID_REQUESTED,
   BID_RESPONSE,
+  BID_TIMEOUT,
   BID_WON,
   AUCTION_END,
   AD_RENDER_FAILED,
@@ -30,14 +34,16 @@ const SERVER_EVENTS = {
   AD_RENDER_FAILED: 'adRenderFailed',
   AD_RENDER_SUCCEEDED: 'adRenderSucceeded',
   WON: 'bidWon',
-  AUCTION_END: 'auctionEnd'
+  AUCTION_END: 'auctionEnd',
+  BID_TIMEOUT: 'bidTimeout'
 }
 
 const SERVER_BID_STATUS = {
   BID_REQUESTED: 'bidRequested',
   BID_RECEIVED: 'bidReceived',
   BID_WON: 'bidWon',
-  AUCTION_END: 'auctionEnd'
+  AUCTION_END: 'auctionEnd',
+  BID_TIMEOUT: 'bidTimeout'
 }
 
 let auctions = {}
@@ -92,6 +98,12 @@ const onBidResponse = (args) => {
     end: args.responseTimestamp,
     re: args.responseTimestamp - auction.auctionStart
   })
+}
+
+const onBidTimeout = (args) => {
+  args.forEach(bid => {
+    sendEvent(SERVER_EVENTS.BID_TIMEOUT, bid)
+  });
 }
 
 const onAuctionEnd = (args) => {
@@ -189,6 +201,9 @@ function handleEvent(eventType, args) {
     case AD_RENDER_SUCCEEDED:
       onAdRenderSucceeded(args)
       break
+    case BID_TIMEOUT:
+      onBidTimeout(args)
+      break
   }
 }
 
@@ -197,6 +212,9 @@ function sendEvent(eventType, data) {
     eventType,
     domain: window.location.hostname
   }
+  const siteUUID = getSiteUUID();
+  const country = storage.getCookie('visitorGeo');
+  const tld = getTLD();
   if (data.bid) {
     payload.bid = data.bid
   }
@@ -218,6 +236,25 @@ function sendEvent(eventType, data) {
   if (data.adUnits) {
     payload.adUnits = data.adUnits
   }
+  if (data.adUnitCode) {
+    payload.adUnitCode = data.adUnitCode
+  }
+  if (data.bidId) {
+    payload.bidId = data.bidId
+  }
+  if (data.bidder) {
+    payload.bidder = data.bidder
+  }
+  if (siteUUID) {
+    payload.siteUUID = siteUUID
+  }
+  if (country) {
+    payload.country = country
+  }
+  if (tld) {
+    payload.tld = tld;
+  }
+
   let endpoint
   if (eventType === SERVER_EVENTS.AD_RENDER_FAILED) {
     endpoint = ENDPOINTS.AD_RENDER_FAILED
@@ -227,6 +264,8 @@ function sendEvent(eventType, data) {
     endpoint = ENDPOINTS.AD_RENDER_SUCCEEDED
   } else if (eventType === SERVER_EVENTS.AUCTION_END) {
     endpoint = ENDPOINTS.AUCTION_END
+  } else if (eventType === SERVER_EVENTS.BID_TIMEOUT) {
+    endpoint = ENDPOINTS.BID_TIMEOUT
   }
   if (endpoint) {
     ajaxCall(endpoint, () => { }, JSON.stringify(payload), {})
@@ -235,6 +274,25 @@ function sendEvent(eventType, data) {
 
 function parseBidId(bid) {
   return bid.bidId || bid.requestId
+}
+
+function getSiteUUID() {
+  return (window.Insticator && window.Insticator.siteUUID) ? window.Insticator.siteUUID : '';
+}
+
+function getTLD(){
+  var i, tld,
+    testCookie='testCookie=cookie',
+    hostname = document.location.hostname.split('.');
+  for(i = hostname.length - 1; i >= 0; i--) {
+    tld = hostname.slice(i).join('.');
+    document.cookie = testCookie + ';domain=.' + tld + ';';
+    if(document.cookie.indexOf(testCookie) > -1){
+      document.cookie = testCookie.split('=')[0] + '=;domain=.' + tld + ';expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      return tld;
+    }
+  }
+  return '';
 }
 
 function mapBid({
