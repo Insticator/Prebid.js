@@ -2,11 +2,19 @@ var prebid = require('./package.json');
 var path = require('path');
 var webpack = require('webpack');
 var helpers = require('./gulpHelpers.js');
+var RequireEnsureWithoutJsonp = require('./plugins/RequireEnsureWithoutJsonp.js');
 var { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 var argv = require('yargs').argv;
+var allowedModules = require('./allowedModules.js');
+
+// list of module names to never include in the common bundle chunk
+var neverBundle = [
+  'AnalyticsAdapter.js'
+];
 
 var plugins = [
-  new webpack.EnvironmentPlugin({'LiveConnectMode': null})
+  new RequireEnsureWithoutJsonp(),
+  new webpack.EnvironmentPlugin(['LiveConnectMode'])
 ];
 
 if (argv.analyze) {
@@ -15,8 +23,27 @@ if (argv.analyze) {
   )
 }
 
+plugins.push( // this plugin must be last so it can be easily removed for karma unit tests
+  new webpack.optimize.CommonsChunkPlugin({
+    name: 'prebid',
+    filename: 'prebid-core.js',
+    minChunks: function(module) {
+      return (
+        (
+          module.context && module.context.startsWith(path.resolve('./src')) &&
+          !(module.resource && neverBundle.some(name => module.resource.includes(name)))
+        ) ||
+        (
+          module.resource && (allowedModules.src.concat(['core-js'])).some(
+            name => module.resource.includes(path.resolve('./node_modules/' + name))
+          )
+        )
+      );
+    }
+  })
+);
+
 module.exports = {
-  mode: 'production',
   devtool: 'source-map',
   resolve: {
     modules: [
@@ -24,26 +51,8 @@ module.exports = {
       'node_modules'
     ],
   },
-  entry: (() => {
-    const entry = {
-      'prebid-core': {
-        import: './src/prebid.js'
-      }
-    };
-    const selectedModules = new Set(helpers.getArgModules());
-    Object.entries(helpers.getModules()).forEach(([fn, mod]) => {
-      if (selectedModules.size === 0 || selectedModules.has(mod)) {
-        entry[mod] = {
-          import: fn,
-          dependOn: 'prebid-core'
-        }
-      }
-    });
-    return entry;
-  })(),
   output: {
-    chunkLoadingGlobal: prebid.globalVarName + 'Chunk',
-    chunkLoading: 'jsonp',
+    jsonpFunction: prebid.globalVarName + 'Chunk'
   },
   module: {
     rules: [
@@ -67,10 +76,6 @@ module.exports = {
         ],
       }
     ]
-  },
-  optimization: {
-    usedExports: true,
-    sideEffects: true,
   },
   plugins
 };

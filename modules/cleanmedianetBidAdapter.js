@@ -1,9 +1,9 @@
-import {deepAccess, getDNT, inIframe, isArray, isNumber, logError, logWarn} from '../src/utils.js';
+import { getDNT, inIframe, isArray, isNumber, logError, deepAccess, logWarn } from '../src/utils.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {config} from '../src/config.js';
 import {Renderer} from '../src/Renderer.js';
 import {BANNER, VIDEO} from '../src/mediaTypes.js';
-import {includes} from '../src/polyfill.js';
+import includes from 'core-js-pure/features/array/includes.js';
 
 export const helper = {
   getTopWindowDomain: function (url) {

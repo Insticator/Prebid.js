@@ -283,13 +283,12 @@ describe('betweenBidAdapterTests', function () {
     let bids = spec.interpretResponse(serverResponse);
     expect(bids).to.have.lengthOf(1);
     let bid = bids[0];
-    expect(bid.currency).to.equal('USD');
+    expect(bid.currency).to.equal('RUB');
   });
   it('check getUserSyncs', function() {
     const syncs = spec.getUserSyncs({}, {});
-    expect(syncs).to.be.an('array').that.to.have.lengthOf(2);
+    expect(syncs).to.be.an('array').that.to.have.lengthOf(1);
     expect(syncs[0]).to.deep.equal({type: 'iframe', url: 'https://ads.betweendigital.com/sspmatch-iframe'});
-    expect(syncs[1]).to.deep.equal({type: 'image', url: 'https://ads.betweendigital.com/sspmatch'});
   });
 
   it('check sizes', function() {

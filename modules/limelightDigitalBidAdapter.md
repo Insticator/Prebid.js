@@ -22,7 +22,7 @@ var adUnits = [{
     bids: [{
         bidder: 'limelightDigital',
         params: {
-            host: 'exchange-9qao.ortb.net',
+            host: 'exchange.ortb.net',
             adUnitId: 0,
             adUnitType: 'banner'
         }
@@ -38,7 +38,7 @@ var videoAdUnit = [{
     bids: [{
         bidder: 'limelightDigital',
         params: {
-            host: 'exchange-9qao.ortb.net',
+            host: 'exchange.ortb.net',
             adUnitId: 0,
             adUnitType: 'video'
         }

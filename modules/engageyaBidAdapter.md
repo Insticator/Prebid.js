@@ -3,7 +3,7 @@
 ```
 Module Name: Engageya's Bidder Adapter
 Module Type: Bidder Adapter
-Maintainer: prebid@engageya.com
+Maintainer: reem@engageya.com
 ```
 
 # Description

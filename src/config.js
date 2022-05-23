@@ -13,12 +13,16 @@
  */
 
 import { isValidPriceConfig } from './cpmBucketManager.js';
-import {find, includes, arrayFrom as from} from './polyfill.js';
+import find from 'core-js-pure/features/array/find.js';
+import includes from 'core-js-pure/features/array/includes.js';
+import Set from 'core-js-pure/features/set';
 import {
   mergeDeep, deepClone, getParameterByName, isPlainObject, logMessage, logWarn, logError,
   isArray, isStr, isBoolean, deepAccess, bind
 } from './utils.js';
-import CONSTANTS from './constants.json';
+
+const from = require('core-js-pure/features/array/from.js');
+const CONSTANTS = require('./constants.json');
 
 const DEFAULT_DEBUG = getParameterByName(CONSTANTS.DEBUG_MODE).toUpperCase() === 'TRUE';
 const DEFAULT_BIDDER_TIMEOUT = 3000;

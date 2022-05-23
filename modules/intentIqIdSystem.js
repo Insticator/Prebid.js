@@ -6,17 +6,16 @@
  */
 
 import { logError, logInfo } from '../src/utils.js';
-import { ajax } from '../src/ajax.js';
-import { submodule } from '../src/hook.js'
-import { getStorageManager } from '../src/storageManager.js';
+import {ajax} from '../src/ajax.js';
+import {submodule} from '../src/hook.js'
+import {getStorageManager} from '../src/storageManager.js';
 
 const PCID_EXPIRY = 365;
 
 const MODULE_NAME = 'intentIqId';
 export const FIRST_PARTY_KEY = '_iiq_fdata';
-export var FIRST_PARTY_DATA_KEY = '_iiq_fdata';
 
-export const storage = getStorageManager({ gvlid: undefined, moduleName: MODULE_NAME });
+export const storage = getStorageManager(undefined, MODULE_NAME);
 
 const INVALID_ID = 'INVALID_ID';
 
@@ -118,8 +117,6 @@ export const intentIqIdSubmodule = {
       logError('User ID - intentIqId submodule requires a valid partner to be defined');
       return;
     }
-    if (!FIRST_PARTY_DATA_KEY.includes(configParams.partner)) { FIRST_PARTY_DATA_KEY += '_' + configParams.partner }
-    let rrttStrtTime = 0;
 
     // Read Intent IQ 1st party id or generate it if none exists
     let firstPartyData = tryParse(readData(FIRST_PARTY_KEY));
@@ -129,17 +126,12 @@ export const intentIqIdSubmodule = {
       storeData(FIRST_PARTY_KEY, JSON.stringify(firstPartyData));
     }
 
-    let partnerData = tryParse(readData(FIRST_PARTY_DATA_KEY));
-    if (!partnerData) partnerData = {};
-
     // use protocol relative urls for http or https
     let url = `https://api.intentiq.com/profiles_engine/ProfilesEngineServlet?at=39&mi=10&dpi=${configParams.partner}&pt=17&dpn=1`;
     url += configParams.pcid ? '&pcid=' + encodeURIComponent(configParams.pcid) : '';
     url += configParams.pai ? '&pai=' + encodeURIComponent(configParams.pai) : '';
     url += firstPartyData.pcid ? '&iiqidtype=2&iiqpcid=' + encodeURIComponent(firstPartyData.pcid) : '';
     url += firstPartyData.pid ? '&pid=' + encodeURIComponent(firstPartyData.pid) : '';
-    url += (partnerData.cttl) ? '&cttl=' + encodeURIComponent(partnerData.cttl) : '';
-    url += (partnerData.rrtt) ? '&rrtt=' + encodeURIComponent(partnerData.rrtt) : '';
 
     const resp = function (callback) {
       const callbacks = {
@@ -148,30 +140,14 @@ export const intentIqIdSubmodule = {
           // If response is a valid json and should save is true
           if (respJson && respJson.ls) {
             // Store pid field if found in response json
-            let shouldUpdateLs = false;
             if ('pid' in respJson) {
               firstPartyData.pid = respJson.pid;
-              shouldUpdateLs = true;
+              storeData(FIRST_PARTY_KEY, JSON.stringify(firstPartyData));
             }
-            if ('cttl' in respJson) {
-              partnerData.cttl = respJson.cttl;
-              shouldUpdateLs = true;
-            }
+
             // If should save and data is empty, means we should save as INVALID_ID
             if (respJson.data == '') {
               respJson.data = INVALID_ID;
-            } else {
-              partnerData.data = respJson.data;
-              shouldUpdateLs = true;
-            }
-            if (rrttStrtTime && rrttStrtTime > 0) {
-              partnerData.rrtt = Date.now() - rrttStrtTime;
-              shouldUpdateLs = true;
-            }
-            if (shouldUpdateLs === true) {
-              partnerData.date = Date.now()
-              storeData(FIRST_PARTY_KEY, JSON.stringify(firstPartyData));
-              storeData(FIRST_PARTY_DATA_KEY, JSON.stringify(partnerData));
             }
             callback(respJson.data);
           } else {
@@ -183,13 +159,9 @@ export const intentIqIdSubmodule = {
           callback();
         }
       };
-      if (partnerData.date && partnerData.cttl && partnerData.data &&
-        Date.now() - partnerData.date < partnerData.cttl) { callback(partnerData.data); } else {
-        rrttStrtTime = Date.now();
-        ajax(url, callbacks, undefined, { method: 'GET', withCredentials: true });
-      }
+      ajax(url, callbacks, undefined, {method: 'GET', withCredentials: true});
     };
-    return { callback: resp };
+    return {callback: resp};
   }
 };
 

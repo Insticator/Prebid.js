@@ -11,7 +11,7 @@ describe('adnuntiusBidAdapter', function () {
   const GVLID = 855;
   const usi = utils.generateUUID()
   const meta = [{ key: 'usi', value: usi }]
-  const storage = getStorageManager({gvlid: GVLID, moduleName: 'adnuntius'})
+  const storage = getStorageManager(GVLID, 'adnuntius')
   storage.setDataInLocalStorage('adn.metaData', JSON.stringify(meta))
 
   afterEach(function () {

@@ -25,8 +25,8 @@ var adUnits = [
         bids: [{
             bidder: 'automatad',
             params: {
-                siteId: 'someValue',                // required
-                placementId: 'someValue'            // optional
+                siteId: 'someValue',
+                placementId: 'someValue'
             }
         }]
     }

@@ -2,7 +2,6 @@
 //
 // For more information, see http://karma-runner.github.io/1.0/config/configuration-file.html
 
-const babelConfig = require('./babelConfig.js');
 var _ = require('lodash');
 var webpackConf = require('./webpack.conf.js');
 var karmaConstants = require('karma').constants;
@@ -11,19 +10,10 @@ function newWebpackConfig(codeCoverage) {
   // Make a clone here because we plan on mutating this object, and don't want parallel tasks to trample each other.
   var webpackConfig = _.cloneDeep(webpackConf);
 
-  Object.assign(webpackConfig, {
-    mode: 'development',
-    devtool: 'inline-source-map',
-  });
+  // remove optimize plugin for tests
+  webpackConfig.plugins.pop()
 
-  delete webpackConfig.entry;
-
-  webpackConfig.module.rules
-    .flatMap((r) => r.use)
-    .filter((use) => use.loader === 'babel-loader')
-    .forEach((use) => {
-      use.options = babelConfig(true);
-    });
+  webpackConfig.devtool = 'inline-source-map';
 
   if (codeCoverage) {
     webpackConfig.module.rules.push({

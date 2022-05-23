@@ -245,6 +245,7 @@ describe('OguryBidAdapter', function () {
       }, {
         id: bidRequests[1].bidId,
         tagid: bidRequests[1].params.adUnitId,
+        bidfloor: 0,
         banner: {
           format: [{
             w: 600,
@@ -270,7 +271,7 @@ describe('OguryBidAdapter', function () {
       },
       ext: {
         prebidversion: '$prebid.version$',
-        adapterversion: '1.2.11'
+        adapterversion: '1.2.10'
       }
     };
 
@@ -400,7 +401,7 @@ describe('OguryBidAdapter', function () {
 
     it('should handle bidFloor when currency is not USD', () => {
       const expectedRequestWithUnsupportedFloorCurrency = utils.deepClone(expectedRequestObject)
-      delete expectedRequestWithUnsupportedFloorCurrency.imp[0].bidfloor;
+      expectedRequestWithUnsupportedFloorCurrency.imp[0].bidfloor = 0;
       let validBidRequests = utils.deepClone(bidRequests);
       validBidRequests[0] = {
         ...validBidRequests[0],
@@ -481,7 +482,7 @@ describe('OguryBidAdapter', function () {
           advertiserDomains: openRtbBidResponse.body.seatbid[0].bid[0].adomain
         },
         nurl: openRtbBidResponse.body.seatbid[0].bid[0].nurl,
-        adapterVersion: '1.2.11',
+        adapterVersion: '1.2.10',
         prebidVersion: '$prebid.version$'
       }, {
         requestId: openRtbBidResponse.body.seatbid[0].bid[1].impid,
@@ -498,7 +499,7 @@ describe('OguryBidAdapter', function () {
           advertiserDomains: openRtbBidResponse.body.seatbid[0].bid[1].adomain
         },
         nurl: openRtbBidResponse.body.seatbid[0].bid[1].nurl,
-        adapterVersion: '1.2.11',
+        adapterVersion: '1.2.10',
         prebidVersion: '$prebid.version$'
       }]
 

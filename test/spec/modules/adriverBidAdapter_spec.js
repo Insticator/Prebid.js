@@ -79,9 +79,6 @@ describe('adriverAdapter', function () {
         bidderRequestId: '22edbae2733bf6',
         auctionId: '1d1a030790a475',
         transactionId: '04f2659e-c005-4eb1-a57c-fa93145e3843',
-        userId: {
-          adrcid: 'testCookieValue',
-        },
         userIdAsEids: [
           {
             source: 'id5-sync.com',
@@ -292,34 +289,6 @@ describe('adriverAdapter', function () {
       expect(payload.imp[0].pmp.deals[0].bidfloorcur).to.deep.equal('RUB');
     });
 
-    const cookieValues = [
-      { adrcid: 'adrcidValue' },
-      { adrcid: undefined }
-    ]
-    cookieValues.forEach(cookieValue => describe('test cookie exist or not behavior', function () {
-      let expectedValues = {
-        adrcid: cookieValue.adrcid,
-        at: '',
-        cur: '',
-        tmax: '',
-        site: '',
-        id: '',
-        user: '',
-        device: '',
-        imp: ''
-      }
-
-      it('check adrcid if it exists', function () {
-        bidRequests[0].userId.adrcid = cookieValue.adrcid;
-        const payload = JSON.parse(spec.buildRequests(bidRequests).data);
-        if (cookieValue.adrcid) {
-          expect(Object.keys(payload)).to.have.members(Object.keys(expectedValues));
-        } else {
-          expect(payload.adrcid).to.equal(undefined);
-        }
-      });
-    }));
-
     it('sends bid request to ENDPOINT via POST', function () {
       const request = spec.buildRequests(bidRequests);
       expect(request.url).to.equal(ENDPOINT);
@@ -429,9 +398,6 @@ describe('adriverAdapter', function () {
         bidderRequestId: '22edbae2733bf6',
         auctionId: '1d1a030790a475',
         transactionId: '04f2659e-c005-4eb1-a57c-fa93145e3843',
-        userId: {
-          adrcid: 'testCookieValue',
-        },
         userIdAsEids: [
           {
             source: 'id5-sync.com',
@@ -569,9 +535,6 @@ describe('adriverAdapter', function () {
         bidderRequestId: '22edbae2733bf6',
         auctionId: '1d1a030790a475',
         transactionId: '04f2659e-c005-4eb1-a57c-fa93145e3843',
-        userId: {
-          adrcid: 'testCookieValue',
-        },
         userIdAsEids: [
           {
             source: 'id5-sync.com',

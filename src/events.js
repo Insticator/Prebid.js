@@ -1,9 +1,8 @@
 /**
  * events.js
  */
-import * as utils from './utils.js'
-import CONSTANTS from './constants.json';
-
+var utils = require('./utils.js');
+var CONSTANTS = require('./constants.json');
 var slice = Array.prototype.slice;
 var push = Array.prototype.push;
 
@@ -17,7 +16,8 @@ var idPaths = CONSTANTS.EVENT_ID_PATHS;
 
 // keep a record of all events fired
 var eventsFired = [];
-const _public = (function () {
+
+module.exports = (function () {
   var _handlers = {};
   var _public = {};
 
@@ -149,7 +149,3 @@ const _public = (function () {
 
   return _public;
 }());
-
-utils._setEventEmitter(_public.emit.bind(_public));
-
-export const {on, off, get, getEvents, emit} = _public;

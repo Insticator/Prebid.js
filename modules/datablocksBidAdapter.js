@@ -4,7 +4,7 @@ import { config } from '../src/config.js';
 import { BANNER, NATIVE } from '../src/mediaTypes.js';
 import { getStorageManager } from '../src/storageManager.js';
 import { ajax } from '../src/ajax.js';
-export const storage = getStorageManager({bidderCode: 'datablocks'});
+export const storage = getStorageManager();
 
 const NATIVE_ID_MAP = {};
 const NATIVE_PARAMS = {

@@ -1,7 +1,7 @@
 import adapterManager from './adapterManager.js';
 import { deepAccess, logError } from './utils.js';
 import { config } from '../src/config.js';
-import {includes} from './polyfill.js';
+import includes from 'core-js-pure/features/array/includes.js';
 import { hook } from './hook.js';
 import {auctionManager} from './auctionManager.js';
 

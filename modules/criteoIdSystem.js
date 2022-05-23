@@ -13,7 +13,7 @@ import { getStorageManager } from '../src/storageManager.js';
 
 const gvlid = 91;
 const bidderCode = 'criteo';
-export const storage = getStorageManager({gvlid: gvlid, moduleName: bidderCode});
+export const storage = getStorageManager(gvlid, bidderCode);
 
 const bididStorageKey = 'cto_bidid';
 const bundleStorageKey = 'cto_bundle';

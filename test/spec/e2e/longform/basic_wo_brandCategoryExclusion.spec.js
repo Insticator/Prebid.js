@@ -1,4 +1,4 @@
-import {includes} from 'src/polyfill.js';
+const includes = require('core-js-pure/features/array/includes.js');
 const expect = require('chai').expect;
 const { host, protocol, waitForElement } = require('../../../helpers/testing-utils');
 

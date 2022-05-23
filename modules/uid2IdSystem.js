@@ -23,7 +23,7 @@ function readFromLocalStorage() {
 }
 
 function getStorage() {
-  return getStorageManager({gvlid: GVLID, moduleName: MODULE_NAME});
+  return getStorageManager(GVLID, MODULE_NAME);
 }
 
 const storage = getStorage();

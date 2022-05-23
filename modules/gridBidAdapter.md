@@ -13,11 +13,11 @@ Grid bid adapter supports Banner and Video (instream and outstream).
 You can allow writing in localStorage `pbjs.setBidderConfig` for the bidder `grid`
 ```
 pbjs.setBidderConfig({
-    bidders: ["grid"],
-    config: {
-        localStorageWriteAllowed: true
-    }
-})
+        bidders: ["grid"],
+        config: {
+            localStorageWriteAllowed: true
+        }
+      })
 ```
 
 # Test Parameters
@@ -25,11 +25,7 @@ pbjs.setBidderConfig({
     var adUnits = [
            {
                code: 'test-div',
-               mediaTypes: {
-                   banner: {
-                       sizes: [[300, 250], [300,600]],
-                   }
-               },
+               sizes: [[300, 250]],
                bids: [
                    {
                        bidder: "grid",
@@ -41,19 +37,15 @@ pbjs.setBidderConfig({
                ]
            },{
                code: 'test-div',
+               sizes: [[728, 90]],
                bids: [
                    {
                        bidder: "grid",
                        params: {
                            uid: 2,
                            keywords: {
-                               site: {
-                                  publisher: [{
-                                    name: 'someKeywordsName',
-                                    brandsafety: ['disaster'],
-                                    topic: ['stress', 'fear']
-                                  }]
-                                }
+                               brandsafety: ['disaster'],
+                               topic: ['stress', 'fear']
                            }
                        }
                    }
@@ -62,12 +54,7 @@ pbjs.setBidderConfig({
            {
                code: 'test-div',
                sizes: [[728, 90]],
-               mediaTypes: {
-                   video: {
-                       playerSize: [1280, 720],
-                       context: 'instream'
-                   }
-               },
+               mediaTypes: { video: {} },
                bids: [
                    {
                        bidder: "grid",

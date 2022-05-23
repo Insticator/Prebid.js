@@ -23,7 +23,7 @@ describe('The Criteo bidding adapter', function () {
     sandbox = sinon.sandbox.create();
   });
 
-  afterEach(function () {
+  afterEach(function() {
     global.Criteo = undefined;
     utilsMock.restore();
     sandbox.restore();
@@ -430,11 +430,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {}
         },
       ];
@@ -449,15 +445,11 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123,
             publisherSubId: '123',
-            nativeCallback: function () { },
+            nativeCallback: function() {},
             integrationMode: 'amp'
           },
         },
@@ -481,11 +473,7 @@ describe('The Criteo bidding adapter', function () {
     it('should keep undefined sizes for non native banner', function () {
       const bidRequests = [
         {
-          mediaTypes: {
-            banner: {
-              sizes: [[undefined, undefined]]
-            }
-          },
+          sizes: [[undefined, undefined]],
           params: {},
         },
       ];
@@ -498,11 +486,7 @@ describe('The Criteo bidding adapter', function () {
     it('should keep undefined size for non native banner', function () {
       const bidRequests = [
         {
-          mediaTypes: {
-            banner: {
-              sizes: [undefined, undefined]
-            }
-          },
+          sizes: [undefined, undefined],
           params: {},
         },
       ];
@@ -515,13 +499,9 @@ describe('The Criteo bidding adapter', function () {
     it('should properly detect and get sizes of native sizeless banner', function () {
       const bidRequests = [
         {
-          mediaTypes: {
-            banner: {
-              sizes: [[undefined, undefined]]
-            }
-          },
+          sizes: [[undefined, undefined]],
           params: {
-            nativeCallback: function () { }
+            nativeCallback: function() {}
           },
         },
       ];
@@ -534,13 +514,9 @@ describe('The Criteo bidding adapter', function () {
     it('should properly detect and get size of native sizeless banner', function () {
       const bidRequests = [
         {
-          mediaTypes: {
-            banner: {
-              sizes: [undefined, undefined]
-            }
-          },
+          sizes: [undefined, undefined],
           params: {
-            nativeCallback: function () { }
+            nativeCallback: function() {}
           },
         },
       ];
@@ -609,11 +585,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123,
           },
@@ -622,11 +594,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-234',
           transactionId: 'transaction-234',
-          mediaTypes: {
-            banner: {
-              sizes: [[300, 250], [728, 90]]
-            }
-          },
+          sizes: [[300, 250], [728, 90]],
           params: {
             networkId: 456,
           },
@@ -657,11 +625,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123,
           },
@@ -683,11 +647,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123,
           },
@@ -713,11 +673,7 @@ describe('The Criteo bidding adapter', function () {
           schain: expectedSchain,
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123,
           },
@@ -734,11 +690,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123,
           },
@@ -759,7 +711,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          sizes: [[640, 480]],
+          sizes: [[728, 90]],
           mediaTypes: {
             video: {
               playerSize: [640, 480],
@@ -786,7 +738,6 @@ describe('The Criteo bidding adapter', function () {
       expect(request.method).to.equal('POST');
       const ortbRequest = request.data;
       expect(ortbRequest.slots[0].video.mimes).to.deep.equal(['video/mp4', 'video/x-flv']);
-      expect(ortbRequest.slots[0].sizes).to.deep.equal([]);
       expect(ortbRequest.slots[0].video.playersizes).to.deep.equal(['640x480']);
       expect(ortbRequest.slots[0].video.maxduration).to.equal(30);
       expect(ortbRequest.slots[0].video.api).to.deep.equal([1, 2]);
@@ -804,7 +755,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          sizes: [[640, 480], [800, 600]],
+          sizes: [[728, 90]],
           mediaTypes: {
             video: {
               playerSize: [[640, 480], [800, 600]],
@@ -830,7 +781,6 @@ describe('The Criteo bidding adapter', function () {
       expect(request.url).to.match(/^https:\/\/bidder\.criteo\.com\/cdb\?profileId=207&av=\d+&wv=[^&]+&cb=\d/);
       expect(request.method).to.equal('POST');
       const ortbRequest = request.data;
-      expect(ortbRequest.slots[0].sizes).to.deep.equal([]);
       expect(ortbRequest.slots[0].video.mimes).to.deep.equal(['video/mp4', 'video/x-flv']);
       expect(ortbRequest.slots[0].video.playersizes).to.deep.equal(['640x480', '800x600']);
       expect(ortbRequest.slots[0].video.maxduration).to.equal(30);
@@ -849,10 +799,10 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          sizes: [[300, 250]],
+          sizes: [[728, 90]],
           mediaTypes: {
             video: {
-              playerSize: [[300, 250]],
+              playerSize: [ [300, 250] ],
               mimes: ['video/mp4', 'video/MPV', 'video/H264', 'video/webm', 'video/ogg'],
               minduration: 1,
               maxduration: 30,
@@ -871,7 +821,6 @@ describe('The Criteo bidding adapter', function () {
       expect(request.url).to.match(/^https:\/\/bidder\.criteo\.com\/cdb\?profileId=207&av=\d+&wv=[^&]+&cb=\d/);
       expect(request.method).to.equal('POST');
       const ortbRequest = request.data;
-      expect(ortbRequest.slots[0].sizes).to.deep.equal([]);
       expect(ortbRequest.slots[0].video.playersizes).to.deep.equal(['300x250']);
       expect(ortbRequest.slots[0].video.mimes).to.deep.equal(['video/mp4', 'video/MPV', 'video/H264', 'video/webm', 'video/ogg']);
       expect(ortbRequest.slots[0].video.minduration).to.equal(1);
@@ -888,11 +837,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123,
           },
@@ -914,11 +859,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123
           }
@@ -943,11 +884,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123,
             ext: {
@@ -970,7 +907,7 @@ describe('The Criteo bidding adapter', function () {
     });
 
     it('should properly build a request with first party data', function () {
-      const siteData = {
+      const contextData = {
         keywords: ['power tools'],
         ext: {
           data: {
@@ -991,11 +928,7 @@ describe('The Criteo bidding adapter', function () {
           bidder: 'criteo',
           adUnitCode: 'bid-123',
           transactionId: 'transaction-123',
-          mediaTypes: {
-            banner: {
-              sizes: [[728, 90]]
-            }
-          },
+          sizes: [[728, 90]],
           params: {
             zoneId: 123,
             ext: {
@@ -1015,7 +948,7 @@ describe('The Criteo bidding adapter', function () {
       sandbox.stub(config, 'getConfig').callsFake(key => {
         const config = {
           ortb2: {
-            site: siteData,
+            site: contextData,
             user: userData
           }
         };
@@ -1023,8 +956,8 @@ describe('The Criteo bidding adapter', function () {
       });
 
       const request = spec.buildRequests(bidRequests, bidderRequest);
-      expect(request.data.publisher.ext).to.deep.equal({ data: { pageType: 'article' } });
-      expect(request.data.user.ext).to.deep.equal({ data: { registered: true } });
+      expect(request.data.publisher.ext).to.deep.equal({keywords: ['power tools'], data: {pageType: 'article'}});
+      expect(request.data.user.ext).to.deep.equal({gender: 'M', data: {registered: true}});
       expect(request.data.slots[0].ext).to.deep.equal({
         bidfloor: 0.75,
         data: {
@@ -1171,13 +1104,13 @@ describe('The Criteo bidding adapter', function () {
               'advertiser': {
                 'description': 'sponsor',
                 'domain': 'criteo.com',
-                'logo': { 'url': 'https://www.criteo.com/images/criteo-logo.svg', 'height': 300, 'width': 300 }
+                'logo': {'url': 'https://www.criteo.com/images/criteo-logo.svg', 'height': 300, 'width': 300}
               },
               'privacy': {
                 'optout_click_url': 'https://info.criteo.com/privacy/informations',
                 'optout_image_url': 'https://static.criteo.net/flash/icon/nai_small.png',
               },
-              'impression_pixels': [{ 'url': 'https://my-impression-pixel/test/impression' }, { 'url': 'https://cas.com/lg.com' }]
+              'impression_pixels': [{'url': 'https://my-impression-pixel/test/impression'}, {'url': 'https://cas.com/lg.com'}]
             }
           }],
         },
@@ -1201,7 +1134,7 @@ describe('The Criteo bidding adapter', function () {
     });
 
     it('should warn only once if sendTargetingKeys set to true on required fields for native bidRequest', () => {
-      const bidderRequest = {};
+      const bidderRequest = { };
       const bidRequests = [
         {
           bidder: 'criteo',
@@ -1211,7 +1144,7 @@ describe('The Criteo bidding adapter', function () {
           params: {
             zoneId: 123,
             publisherSubId: '123',
-            nativeCallback: function () { }
+            nativeCallback: function() {}
           },
         },
         {
@@ -1222,7 +1155,7 @@ describe('The Criteo bidding adapter', function () {
           params: {
             zoneId: 456,
             publisherSubId: '456',
-            nativeCallback: function () { }
+            nativeCallback: function() {}
           },
         },
       ];
@@ -1276,7 +1209,7 @@ describe('The Criteo bidding adapter', function () {
         .withArgs('Criteo: all native assets containing URL should be sent as placeholders with sendId(icon, image, clickUrl, displayUrl, privacyLink, privacyIcon)')
         .exactly(nativeParamsWithSendTargetingKeys.length * bidRequests.length);
       nativeParamsWithSendTargetingKeys.forEach(nativeParams => {
-        let transformedBidRequests = { ...bidRequests };
+        let transformedBidRequests = {...bidRequests};
         transformedBidRequests = [Object.assign(transformedBidRequests[0], nativeParams), Object.assign(transformedBidRequests[1], nativeParams)];
         spec.buildRequests(transformedBidRequests, bidderRequest);
       });
@@ -1346,79 +1279,6 @@ describe('The Criteo bidding adapter', function () {
       expect(bids).to.have.lengthOf(2);
       const prebidBids = bids.map(bid => Object.assign(createBid(CONSTANTS.STATUS.GOOD, request.bidRequests[0]), bid));
       expect(prebidBids[0].adId).to.not.equal(prebidBids[1].adId);
-    });
-
-    [{
-      hasBidResponseLevelPafData: true,
-      hasBidResponseBidLevelPafData: true,
-      shouldContainsBidMetaPafData: true
-    },
-    {
-      hasBidResponseLevelPafData: false,
-      hasBidResponseBidLevelPafData: true,
-      shouldContainsBidMetaPafData: false
-    },
-    {
-      hasBidResponseLevelPafData: true,
-      hasBidResponseBidLevelPafData: false,
-      shouldContainsBidMetaPafData: false
-    },
-    {
-      hasBidResponseLevelPafData: false,
-      hasBidResponseBidLevelPafData: false,
-      shouldContainsBidMetaPafData: false
-    }].forEach(testCase => {
-      const bidPafContentId = 'abcdef';
-      const pafTransmission = {
-        version: '12'
-      };
-      const response = {
-        slots: [
-          {
-            width: 300,
-            height: 250,
-            cpm: 10,
-            impid: 'adUnitId',
-            ext: (testCase.hasBidResponseBidLevelPafData ? {
-              paf: {
-                content_id: bidPafContentId
-              }
-            } : undefined)
-          }
-        ],
-        ext: (testCase.hasBidResponseLevelPafData ? {
-          paf: {
-            transmission: pafTransmission
-          }
-        } : undefined)
-      };
-
-      const request = {
-        bidRequests: [{
-          adUnitCode: 'adUnitId',
-          sizes: [[300, 250]],
-          params: {
-            networkId: 456,
-          }
-        }]
-      };
-
-      const bids = spec.interpretResponse(response, request);
-
-      expect(bids).to.have.lengthOf(1);
-
-      const theoreticalBidMetaPafData = {
-        paf: {
-          content_id: bidPafContentId,
-          transmission: pafTransmission
-        }
-      };
-
-      if (testCase.shouldContainsBidMetaPafData) {
-        expect(bids[0].meta).to.deep.equal(theoreticalBidMetaPafData);
-      } else {
-        expect(bids[0].meta).not.to.deep.equal(theoreticalBidMetaPafData);
-      }
     });
   });
 
@@ -1513,7 +1373,7 @@ describe('The Criteo bidding adapter', function () {
 
   describe('when pubtag prebid adapter is not available', function () {
     it('should not warn if sendId is provided on required fields for native bidRequest', () => {
-      const bidderRequest = {};
+      const bidderRequest = { };
       const bidRequestsWithSendId = [
         {
           bidder: 'criteo',
@@ -1523,7 +1383,7 @@ describe('The Criteo bidding adapter', function () {
           params: {
             zoneId: 123,
             publisherSubId: '123',
-            nativeCallback: function () { }
+            nativeCallback: function() {}
           },
           nativeParams: {
             image: {
@@ -1554,7 +1414,7 @@ describe('The Criteo bidding adapter', function () {
     });
 
     it('should warn only once if sendId is not provided on required fields for native bidRequest', () => {
-      const bidderRequest = {};
+      const bidderRequest = { };
       const bidRequests = [
         {
           bidder: 'criteo',
@@ -1564,7 +1424,7 @@ describe('The Criteo bidding adapter', function () {
           params: {
             zoneId: 123,
             publisherSubId: '123',
-            nativeCallback: function () { }
+            nativeCallback: function() {}
           },
         },
         {
@@ -1575,7 +1435,7 @@ describe('The Criteo bidding adapter', function () {
           params: {
             zoneId: 456,
             publisherSubId: '456',
-            nativeCallback: function () { }
+            nativeCallback: function() {}
           },
         },
       ];
@@ -1629,7 +1489,7 @@ describe('The Criteo bidding adapter', function () {
         .withArgs('Criteo: all native assets containing URL should be sent as placeholders with sendId(icon, image, clickUrl, displayUrl, privacyLink, privacyIcon)')
         .exactly(nativeParamsWithoutSendId.length * bidRequests.length);
       nativeParamsWithoutSendId.forEach(nativeParams => {
-        let transformedBidRequests = { ...bidRequests };
+        let transformedBidRequests = {...bidRequests};
         transformedBidRequests = [Object.assign(transformedBidRequests[0], nativeParams), Object.assign(transformedBidRequests[1], nativeParams)];
         spec.buildRequests(transformedBidRequests, bidderRequest);
       });
@@ -1642,10 +1502,10 @@ describe('The Criteo bidding adapter', function () {
       const response = {};
       const request = {};
 
-      const adapter = { interpretResponse: function () { } };
+      const adapter = { interpretResponse: function() {} };
       const adapterMock = sinon.mock(adapter);
       adapterMock.expects('interpretResponse').withExactArgs(response, request).once().returns('ok');
-      const prebidAdapter = { GetAdapter: function () { } };
+      const prebidAdapter = { GetAdapter: function() {} };
       const prebidAdapterMock = sinon.mock(prebidAdapter);
       prebidAdapterMock.expects('GetAdapter').withExactArgs(request).once().returns(adapter);
 
@@ -1665,10 +1525,10 @@ describe('The Criteo bidding adapter', function () {
     it('should forward bid to pubtag when calling onBidWon', () => {
       const bid = { auctionId: 123 };
 
-      const adapter = { handleBidWon: function () { } };
+      const adapter = { handleBidWon: function() {} };
       const adapterMock = sinon.mock(adapter);
       adapterMock.expects('handleBidWon').withExactArgs(bid).once();
-      const prebidAdapter = { GetAdapter: function () { } };
+      const prebidAdapter = { GetAdapter: function() {} };
       const prebidAdapterMock = sinon.mock(prebidAdapter);
       prebidAdapterMock.expects('GetAdapter').withExactArgs(bid.auctionId).once().returns(adapter);
 
@@ -1688,10 +1548,10 @@ describe('The Criteo bidding adapter', function () {
     it('should forward bid to pubtag when calling onSetTargeting', () => {
       const bid = { auctionId: 123 };
 
-      const adapter = { handleSetTargeting: function () { } };
+      const adapter = { handleSetTargeting: function() {} };
       const adapterMock = sinon.mock(adapter);
       adapterMock.expects('handleSetTargeting').withExactArgs(bid).once();
-      const prebidAdapter = { GetAdapter: function () { } };
+      const prebidAdapter = { GetAdapter: function() {} };
       const prebidAdapterMock = sinon.mock(prebidAdapter);
       prebidAdapterMock.expects('GetAdapter').withExactArgs(bid.auctionId).once().returns(adapter);
 
@@ -1711,10 +1571,10 @@ describe('The Criteo bidding adapter', function () {
     it('should forward bid to pubtag when calling onTimeout', () => {
       const timeoutData = [{ auctionId: 123 }];
 
-      const adapter = { handleBidTimeout: function () { } };
+      const adapter = { handleBidTimeout: function() {} };
       const adapterMock = sinon.mock(adapter);
       adapterMock.expects('handleBidTimeout').once();
-      const prebidAdapter = { GetAdapter: function () { } };
+      const prebidAdapter = { GetAdapter: function() {} };
       const prebidAdapterMock = sinon.mock(prebidAdapter);
       prebidAdapterMock.expects('GetAdapter').withExactArgs(timeoutData[0].auctionId).once().returns(adapter);
 
@@ -1732,15 +1592,15 @@ describe('The Criteo bidding adapter', function () {
     });
 
     it('should return a POST method with url & data from pubtag', () => {
-      const bidRequests = {};
-      const bidderRequest = {};
+      const bidRequests = { };
+      const bidderRequest = { };
 
-      const prebidAdapter = { buildCdbUrl: function () { }, buildCdbRequest: function () { } };
+      const prebidAdapter = { buildCdbUrl: function() {}, buildCdbRequest: function() {} };
       const prebidAdapterMock = sinon.mock(prebidAdapter);
       prebidAdapterMock.expects('buildCdbUrl').once().returns('cdbUrl');
       prebidAdapterMock.expects('buildCdbRequest').once().returns('cdbRequest');
 
-      const adapters = { Prebid: function () { } };
+      const adapters = { Prebid: function() {} };
       const adaptersMock = sinon.mock(adapters);
       adaptersMock.expects('Prebid').withExactArgs(PROFILE_ID_PUBLISHERTAG, ADAPTER_VERSION, bidRequests, bidderRequest, '$prebid.version$').once().returns(prebidAdapter);
 

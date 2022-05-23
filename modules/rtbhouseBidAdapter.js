@@ -1,7 +1,7 @@
-import {deepAccess, getOrigin, isArray, logError} from '../src/utils.js';
-import {BANNER, NATIVE} from '../src/mediaTypes.js';
-import {registerBidder} from '../src/adapters/bidderFactory.js';
-import {includes} from '../src/polyfill.js';
+import { isArray, deepAccess, getOrigin, logError } from '../src/utils.js';
+import { BANNER, NATIVE } from '../src/mediaTypes.js';
+import { registerBidder } from '../src/adapters/bidderFactory.js';
+import includes from 'core-js-pure/features/array/includes.js';
 
 const BIDDER_CODE = 'rtbhouse';
 const REGIONS = ['prebid-eu', 'prebid-us', 'prebid-asia'];

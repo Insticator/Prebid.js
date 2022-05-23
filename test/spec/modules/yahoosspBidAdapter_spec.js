@@ -1365,13 +1365,5 @@ describe('YahooSSP Bid Adapter:', () => {
         expect(response[0].ttl).to.equal(500);
       });
     });
-
-    describe('Aliasing support', () => {
-      it('should return undefined as the bidder code value', () => {
-        const { serverResponse, bidderRequest } = generateResponseMock('banner');
-        const response = spec.interpretResponse(serverResponse, {bidderRequest});
-        expect(response[0].bidderCode).to.be.undefined;
-      });
-    });
   });
 });

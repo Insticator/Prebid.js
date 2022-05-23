@@ -1,24 +1,13 @@
-import {find, includes} from '../src/polyfill.js';
-import {config} from '../src/config.js';
-import {BANNER, NATIVE, VIDEO} from '../src/mediaTypes.js';
-import {getStorageManager} from '../src/storageManager.js';
+import includes from 'core-js-pure/features/array/includes.js';
+import find from 'core-js-pure/features/array/find';
+import { config } from '../src/config.js';
+import { BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
+import { getStorageManager } from '../src/storageManager.js';
 import {
-  deepAccess,
-  deepSetValue,
-  flatten,
-  generateUUID,
-  inIframe,
-  isArray,
-  isEmptyStr,
-  isNumber,
-  isPlainObject,
-  isStr,
-  logError,
-  logWarn,
-  triggerPixel,
-  uniques
+  isPlainObject, deepSetValue, deepAccess, logWarn, inIframe, isNumber, logError, isArray, uniques,
+  flatten, triggerPixel, isStr, isEmptyStr, generateUUID
 } from '../src/utils.js';
-import {registerBidder} from '../src/adapters/bidderFactory.js';
+import { registerBidder } from '../src/adapters/bidderFactory.js';
 
 /**
  * CONSTANTS
@@ -588,7 +577,7 @@ function bannerHasSingleSize(bidRequest) {
  * USER SYNC
  */
 
-export const storage = getStorageManager({bidderCode: BIDDER_CODE});
+export const storage = getStorageManager();
 
 function getUserSyncs(syncOptions, responses, gdprConsent, uspConsent) {
   return responses

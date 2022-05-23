@@ -27,17 +27,23 @@ const uspCallMap = {
 
 /**
  * This function reads the consent string from the config to obtain the consent information of the user.
+ * @param {function(string)} cmpSuccess acts as a success callback when the value is read from config; pass along consentObject (string) from CMP
+ * @param {function(string)} cmpError acts as an error callback while interacting with the config string; pass along an error message (string)
+ * @param {object} hookConfig contains module related variables (see comment in requestBidsHook function)
  */
-function lookupStaticConsentData({onSuccess, onError}) {
-  processUspData(staticConsentData, {onSuccess, onError});
+function lookupStaticConsentData(cmpSuccess, cmpError, hookConfig) {
+  cmpSuccess(staticConsentData, hookConfig);
 }
 
 /**
  * This function handles interacting with an USP compliant consent manager to obtain the consent information of the user.
  * Given the async nature of the USP's API, we pass in acting success/error callback functions to exit this function
  * based on the appropriate result.
+ * @param {function(string)} uspSuccess acts as a success callback when USPAPI returns a value; pass along consentObject (string) from USPAPI
+ * @param {function(string)} uspError acts as an error callback while interacting with USPAPI; pass along an error message (string)
+ * @param {object} hookConfig contains module related variables (see comment in requestBidsHook function)
  */
-function lookupUspConsent({onSuccess, onError}) {
+function lookupUspConsent(uspSuccess, uspError, hookConfig) {
   function findUsp() {
     let f = window;
     let uspapiFrame;
@@ -72,9 +78,9 @@ function lookupUspConsent({onSuccess, onError}) {
 
     function afterEach() {
       if (uspResponse.usPrivacy) {
-        processUspData(uspResponse, {onSuccess, onError})
+        uspSuccess(uspResponse, hookConfig);
       } else {
-        onError('Unable to get USP consent string.');
+        uspError('Unable to get USP consent string.', hookConfig);
       }
     }
 
@@ -94,7 +100,7 @@ function lookupUspConsent({onSuccess, onError}) {
   let { uspapiFrame, uspapiFunction } = findUsp();
 
   if (!uspapiFrame) {
-    return onError('USP CMP not found.');
+    return uspError('USP CMP not found.', hookConfig);
   }
 
   // to collect the consent information from the user, we perform a call to USPAPI
@@ -159,50 +165,6 @@ function lookupUspConsent({onSuccess, onError}) {
 }
 
 /**
- * Lookup consent data and store it in the `consentData` global as well as `adapterManager.js`' uspDataHanlder.
- *
- * @param cb a callback that takes an error message and extra error arguments; all args will be undefined if consent
- * data was retrieved successfully.
- */
-function loadConsentData(cb) {
-  let timer = null;
-  let isDone = false;
-
-  function done(consentData, errMsg, ...extraArgs) {
-    if (timer != null) {
-      clearTimeout(timer);
-    }
-    isDone = true;
-    uspDataHandler.setConsentData(consentData);
-    if (cb != null) {
-      cb(errMsg, ...extraArgs)
-    }
-  }
-
-  if (!uspCallMap[consentAPI]) {
-    done(null, `USP framework (${consentAPI}) is not a supported framework. Aborting consentManagement module and resuming auction.`);
-    return;
-  }
-
-  const callbacks = {
-    onSuccess: done,
-    onError: function (errMsg, ...extraArgs) {
-      done(null, `${errMsg} Resuming auction without consent data as per consentManagement config.`, ...extraArgs);
-    }
-  }
-
-  uspCallMap[consentAPI](callbacks);
-
-  if (!isDone) {
-    if (consentTimeout === 0) {
-      processUspData(undefined, callbacks);
-    } else {
-      timer = setTimeout(callbacks.onError.bind(null, 'USPAPI workflow exceeded timeout threshold.'), consentTimeout)
-    }
-  }
-}
-
-/**
  * If consentManagementUSP module is enabled (ie included in setConfig), this hook function will attempt to fetch the
  * user's encoded consent string from the supported USPAPI. Once obtained, the module will store this
  * data as part of a uspConsent object which gets transferred to adapterManager's uspDataHandler object.
@@ -211,12 +173,32 @@ function loadConsentData(cb) {
  * @param {function} fn required; The next function in the chain, used by hook.js
  */
 export function requestBidsHook(fn, reqBidsConfigObj) {
-  loadConsentData((errMsg, ...extraArgs) => {
-    if (errMsg != null) {
-      logWarn(errMsg, ...extraArgs);
+  // preserves all module related variables for the current auction instance (used primiarily for concurrent auctions)
+  const hookConfig = {
+    context: this,
+    args: [reqBidsConfigObj],
+    nextFn: fn,
+    adUnits: reqBidsConfigObj.adUnits || $$PREBID_GLOBAL$$.adUnits,
+    bidsBackHandler: reqBidsConfigObj.bidsBackHandler,
+    haveExited: false,
+    timer: null
+  };
+
+  if (!uspCallMap[consentAPI]) {
+    logWarn(`USP framework (${consentAPI}) is not a supported framework. Aborting consentManagement module and resuming auction.`);
+    return hookConfig.nextFn.apply(hookConfig.context, hookConfig.args);
+  }
+
+  uspCallMap[consentAPI].call(this, processUspData, uspapiFailed, hookConfig);
+
+  // only let this code run if module is still active (ie if the callbacks used by USPs haven't already finished)
+  if (!hookConfig.haveExited) {
+    if (consentTimeout === 0) {
+      processUspData(undefined, hookConfig);
+    } else {
+      hookConfig.timer = setTimeout(uspapiTimeout.bind(null, hookConfig), consentTimeout);
     }
-    fn.call(this, reqBidsConfigObj);
-  });
+  }
 }
 
 /**
@@ -224,27 +206,78 @@ export function requestBidsHook(fn, reqBidsConfigObj) {
  * If it's bad, we exit the module depending on config settings.
  * If it's good, then we store the value and exits the module.
  * @param {object} consentObject required; object returned by USPAPI that contains user's consent choices
- * @param {function(string)} onSuccess callback accepting the resolved consent USP consent string
- * @param {function(string, ...{}?)} onError callback accepting error message and any extra error arguments (used purely for logging)
+ * @param {object} hookConfig contains module related variables (see comment in requestBidsHook function)
  */
-function processUspData(consentObject, {onSuccess, onError}) {
+function processUspData(consentObject, hookConfig) {
   const valid = !!(consentObject && consentObject.usPrivacy);
   if (!valid) {
-    onError(`USPAPI returned unexpected value during lookup process.`, consentObject);
+    uspapiFailed(`USPAPI returned unexpected value during lookup process.`, hookConfig, consentObject);
     return;
   }
 
+  clearTimeout(hookConfig.timer);
   storeUspConsentData(consentObject);
-  onSuccess(consentData);
+  exitModule(null, hookConfig);
+}
+
+/**
+ * General timeout callback when interacting with USPAPI takes too long.
+ */
+function uspapiTimeout(hookConfig) {
+  uspapiFailed('USPAPI workflow exceeded timeout threshold.', hookConfig);
+}
+
+/**
+ * This function contains the controlled steps to perform when there's a problem with USPAPI.
+ * @param {string} errMsg required; should be a short descriptive message for why the failure/issue happened.
+ * @param {object} hookConfig contains module related variables (see comment in requestBidsHook function)
+ * @param {object} extraArgs contains additional data that's passed along in the error/warning messages for easier debugging
+*/
+function uspapiFailed(errMsg, hookConfig, extraArgs) {
+  clearTimeout(hookConfig.timer);
+
+  exitModule(errMsg, hookConfig, extraArgs);
 }
 
 /**
  * Stores USP data locally in module and then invokes uspDataHandler.setConsentData() to make information available in adaptermanger.js for later in the auction
- * @param {object} consentObject required; an object representing user's consent choices (can be undefined in certain use-cases for this function only)
+ * @param {object} cmpConsentObject required; an object representing user's consent choices (can be undefined in certain use-cases for this function only)
  */
 function storeUspConsentData(consentObject) {
   if (consentObject && consentObject.usPrivacy) {
     consentData = consentObject.usPrivacy;
+    uspDataHandler.setConsentData(consentData);
+  }
+}
+
+/**
+ * This function handles the exit logic for the module.
+ * There are a couple paths in the module's logic to call this function and we only allow 1 of the 2 potential exits to happen before suppressing others.
+ *
+ * We prevent multiple exits to avoid conflicting messages in the console depending on certain scenarios.
+ * One scenario could be auction was canceled due to timeout with USPAPI being reached.
+ * While the timeout is the accepted exit and runs first, the USP's callback still tries to process the user's data (which normally leads to a good exit).
+ * In this case, the good exit will be suppressed since we already decided to cancel the auction.
+ *
+ * Three exit paths are:
+ * 1. good exit where auction runs (USPAPI data is processed normally).
+ * 2. bad exit but auction still continues (warning message is logged, USPAPI data is undefined and still passed along).
+ * @param {string} errMsg optional; only to be used when there was a 'bad' exit.  String is a descriptive message for the failure/issue encountered.
+ * @param {object} hookConfig contains module related variables (see comment in requestBidsHook function)
+ * @param {object} extraArgs contains additional data that's passed along in the error/warning messages for easier debugging
+ */
+function exitModule(errMsg, hookConfig, extraArgs) {
+  if (hookConfig.haveExited === false) {
+    hookConfig.haveExited = true;
+
+    let context = hookConfig.context;
+    let args = hookConfig.args;
+    let nextFn = hookConfig.nextFn;
+
+    if (errMsg) {
+      logWarn(errMsg + ' Resuming auction without consent data as per consentManagement config.', extraArgs);
+    }
+    nextFn.apply(context, args);
   }
 }
 
@@ -254,7 +287,7 @@ function storeUspConsentData(consentObject) {
 export function resetConsentData() {
   consentData = undefined;
   consentAPI = undefined;
-  uspDataHandler.reset();
+  uspDataHandler.setConsentData(null);
 }
 
 /**
@@ -295,7 +328,5 @@ export function setConsentConfig(config) {
     $$PREBID_GLOBAL$$.requestBids.before(requestBidsHook, 50);
   }
   addedConsentHook = true;
-  uspDataHandler.enable();
-  loadConsentData(); // immediately look up consent data to make it available without requiring an auction
 }
 config.getConfig('consentManagement', config => setConsentConfig(config.consentManagement));

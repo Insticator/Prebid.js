@@ -15,15 +15,14 @@
  * @property {?string} keyName
  */
 
-import {deepClone, deepSetValue, isFn, isGptPubadsDefined, isNumber, logError, logInfo, generateUUID} from '../src/utils.js';
+import { deepClone, logError, isGptPubadsDefined, isNumber, isFn, deepSetValue } from '../src/utils.js';
 import {submodule} from '../src/hook.js';
 import {ajaxBuilder} from '../src/ajax.js';
 import {loadExternalScript} from '../src/adloader.js';
 import {getStorageManager} from '../src/storageManager.js';
-import {find, includes} from '../src/polyfill.js';
+import find from 'core-js-pure/features/array/find.js';
 import {getGlobal} from '../src/prebidGlobal.js';
-import * as events from '../src/events.js';
-import CONSTANTS from '../src/constants.json';
+import includes from 'core-js-pure/features/array/includes.js';
 
 const storage = getStorageManager();
 
@@ -108,7 +107,6 @@ export function setData(data) {
 }
 
 function getRTD(auc) {
-  logInfo(`Browsi RTD provider is fetching data for ${auc}`);
   try {
     const _bp = (_browsiData && _browsiData.p) || {};
     return auc.reduce((rp, uc) => {
@@ -334,23 +332,13 @@ export const browsiSubmodule = {
   getBidRequestData: setBidRequestsData
 };
 
-function getTargetingData(uc, c, us, a) {
+function getTargetingData(uc) {
   const targetingData = getRTD(uc);
-  const auctionId = a.auctionId
   uc.forEach(auc => {
     if (isNumber(_ic[auc])) {
       _ic[auc] = _ic[auc] + 1;
     }
-    const transactionId = a.adUnits.find(adUnit => adUnit.code === auc).transactionId;
-    events.emit(CONSTANTS.EVENTS.BILLABLE_EVENT, {
-      vendor: 'browsi',
-      type: 'adRequest',
-      billingId: generateUUID(),
-      transactionId: transactionId,
-      auctionId: auctionId
-    })
   });
-  logInfo('Browsi RTD provider returned targeting data', targetingData, 'for', uc)
   return targetingData;
 }
 

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import * as events from 'src/events.js';
+import events from 'src/events.js';
 import CONSTANTS from 'src/constants.json';
 import { server } from 'test/mocks/xhr.js';
 

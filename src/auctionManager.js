@@ -21,9 +21,10 @@
 
 import { uniques, flatten, logWarn } from './utils.js';
 import { newAuction, getStandardBidderSettings, AUCTION_COMPLETED } from './auction.js';
-import {find} from './polyfill.js';
+import find from 'core-js-pure/features/array/find.js';
 import {AuctionIndex} from './auctionIndex.js';
-import CONSTANTS from './constants.json';
+
+const CONSTANTS = require('./constants.json');
 
 /**
  * Creates new instance of auctionManager. There will only be one instance of auctionManager but

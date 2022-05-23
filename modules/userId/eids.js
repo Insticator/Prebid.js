@@ -1,7 +1,7 @@
 import { pick, isFn, isStr, isPlainObject, deepAccess } from '../../src/utils.js';
 
 // Each user-id sub-module is expected to mention respective config here
-export const USER_IDS_CONFIG = {
+const USER_IDS_CONFIG = {
 
   // key-name : {config}
 
@@ -56,20 +56,6 @@ export const USER_IDS_CONFIG = {
     },
     source: 'id5-sync.com',
     atype: 1,
-    getUidExt: function(data) {
-      if (data.ext) {
-        return data.ext;
-      }
-    }
-  },
-
-  // ftrack
-  'ftrackId': {
-    source: 'flashtalking.com',
-    atype: 1,
-    getValue: function(data) {
-      return data.uid
-    },
     getUidExt: function(data) {
       if (data.ext) {
         return data.ext;
@@ -298,21 +284,6 @@ export const USER_IDS_CONFIG = {
   'qid': {
     source: 'adquery.io',
     atype: 1
-  },
-
-  // DAC ID
-  'dacId': {
-    source: 'impact-ad.jp',
-    atype: 1
-  },
-
-  // 33across ID
-  '33acrossId': {
-    source: '33across.com',
-    atype: 1,
-    getValue: function(data) {
-      return data.envelope;
-    }
   },
 };
 

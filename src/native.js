@@ -1,7 +1,8 @@
 import { deepAccess, getKeyByValue, insertHtmlIntoIframe, logError, triggerPixel } from './utils.js';
-import {includes} from './polyfill.js';
+import includes from 'core-js-pure/features/array/includes.js';
 import {auctionManager} from './auctionManager.js';
-import CONSTANTS from './constants.json';
+
+const CONSTANTS = require('./constants.json');
 
 export const nativeAdapters = [];
 

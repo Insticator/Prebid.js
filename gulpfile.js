@@ -8,6 +8,7 @@ var gutil = require('gulp-util');
 var connect = require('gulp-connect');
 var webpack = require('webpack');
 var webpackStream = require('webpack-stream');
+var terser = require('gulp-terser');
 var gulpClean = require('gulp-clean');
 var KarmaServer = require('karma').Server;
 var karmaConfMaker = require('./karma.conf.maker.js');
@@ -32,8 +33,8 @@ var prebid = require('./package.json');
 var dateString = 'Updated : ' + (new Date()).toISOString().substring(0, 10);
 var banner = '/* <%= prebid.name %> v<%= prebid.version %>\n' + dateString + '*/\n';
 var port = 9999;
-const INTEG_SERVER_HOST = argv.host ? argv.host : 'localhost';
-const INTEG_SERVER_PORT = 4444;
+const FAKE_SERVER_HOST = argv.host ? argv.host : 'localhost';
+const FAKE_SERVER_PORT = 4444;
 const { spawn } = require('child_process');
 
 // these modules must be explicitly listed in --modules to be included in the build, won't be part of "all" modules
@@ -116,10 +117,7 @@ viewReview.displayName = 'view-review';
 
 function makeDevpackPkg() {
   var cloned = _.cloneDeep(webpackConfig);
-  Object.assign(cloned, {
-    devtool: 'source-map',
-    mode: 'development'
-  })
+  cloned.devtool = 'source-map';
   var externalModules = helpers.getArgModules();
 
   const analyticsSources = helpers.getAnalyticsSources();
@@ -134,9 +132,7 @@ function makeDevpackPkg() {
 
 function makeWebpackPkg() {
   var cloned = _.cloneDeep(webpackConfig);
-  if (!argv.sourceMaps) {
-    delete cloned.devtool;
-  }
+  delete cloned.devtool;
 
   var externalModules = helpers.getArgModules();
 
@@ -146,17 +142,9 @@ function makeWebpackPkg() {
   return gulp.src([].concat(moduleSources, analyticsSources, 'src/prebid.js'))
     .pipe(helpers.nameModules(externalModules))
     .pipe(webpackStream(cloned, webpack))
+    .pipe(terser())
+    .pipe(gulpif(file => file.basename === 'prebid-core.js', header(banner, { prebid: prebid })))
     .pipe(gulp.dest('build/dist'));
-}
-
-function addBanner() {
-  const sm = argv.sourceMaps;
-
-  return gulp.src(['build/dist/prebid-core.js'])
-    .pipe(gulpif(sm, sourcemaps.init({loadMaps: true})))
-    .pipe(header(banner, {prebid}))
-    .pipe(gulpif(sm, sourcemaps.write('.')))
-    .pipe(gulp.dest('build/dist'))
 }
 
 function getModulesListToAddInBanner(modules) {
@@ -167,9 +155,9 @@ function gulpBundle(dev) {
   return bundle(dev).pipe(gulp.dest('build/' + (dev ? 'dev' : 'dist')));
 }
 
-function nodeBundle(modules, dev = false) {
+function nodeBundle(modules) {
   return new Promise((resolve, reject) => {
-    bundle(dev, modules)
+    bundle(false, modules)
       .on('error', (err) => {
         reject(err);
       })
@@ -183,7 +171,6 @@ function nodeBundle(modules, dev = false) {
 function bundle(dev, moduleArr) {
   var modules = moduleArr || helpers.getArgModules();
   var allModules = helpers.getModuleNames(modules);
-  const sm = dev || argv.sourceMaps;
 
   if (modules.length === 0) {
     modules = allModules.filter(module => explicitModules.indexOf(module) === -1);
@@ -215,13 +202,13 @@ function bundle(dev, moduleArr) {
   )
     // Need to uodate the "Modules: ..." section in comment with the current modules list
     .pipe(replace(/(Modules: )(.*?)(\*\/)/, ('$1' + getModulesListToAddInBanner(helpers.getArgModules()) + ' $3')))
-    .pipe(gulpif(sm, sourcemaps.init({ loadMaps: true })))
+    .pipe(gulpif(dev, sourcemaps.init({ loadMaps: true })))
     .pipe(concat(outputFileName))
     .pipe(gulpif(!argv.manualEnable, footer('\n<%= global %>.processQueue();', {
       global: prebid.globalVarName
     }
     )))
-    .pipe(gulpif(sm, sourcemaps.write('.')));
+    .pipe(gulpif(dev, sourcemaps.write('.')));
 }
 
 // Run the unit tests.
@@ -243,18 +230,41 @@ function testTaskMaker(options = {}) {
     if (options.notest) {
       done();
     } else if (options.e2e) {
-      const integ = startIntegServer();
-      startLocalServer();
-      runWebdriver(options)
+      let wdioCmd = path.join(__dirname, 'node_modules/.bin/wdio');
+      let wdioConf = path.join(__dirname, 'wdio.conf.js');
+      let wdioOpts;
+
+      if (options.file) {
+        wdioOpts = [
+          wdioConf,
+          `--spec`,
+          `${options.file}`
+        ]
+      } else {
+        wdioOpts = [
+          wdioConf
+        ];
+      }
+
+      // run fake-server
+      const fakeServer = spawn('node', ['./test/fake-server/index.js', `--port=${FAKE_SERVER_PORT}`]);
+      fakeServer.stdout.on('data', (data) => {
+        console.log(`stdout: ${data}`);
+      });
+      fakeServer.stderr.on('data', (data) => {
+        console.log(`stderr: ${data}`);
+      });
+
+      execa(wdioCmd, wdioOpts, { stdio: 'inherit' })
         .then(stdout => {
           // kill fake server
-          integ.kill('SIGINT');
+          fakeServer.kill('SIGINT');
           done();
           process.exit(0);
         })
         .catch(err => {
           // kill fake server
-          integ.kill('SIGINT');
+          fakeServer.kill('SIGINT');
           done(new Error(`Tests failed with error: ${err}`));
           process.exit(1);
         });
@@ -272,26 +282,6 @@ function testTaskMaker(options = {}) {
 }
 
 const test = testTaskMaker();
-
-function runWebdriver({file}) {
-  process.env.TEST_SERVER_HOST = argv.host || 'localhost';
-  let wdioCmd = path.join(__dirname, 'node_modules/.bin/wdio');
-  let wdioConf = path.join(__dirname, 'wdio.conf.js');
-  let wdioOpts;
-
-  if (file) {
-    wdioOpts = [
-      wdioConf,
-      `--spec`,
-      `${file}`
-    ]
-  } else {
-    wdioOpts = [
-      wdioConf
-    ];
-  }
-  return execa(wdioCmd, wdioOpts, { stdio: 'inherit' });
-}
 
 function newKarmaCallback(done) {
   return function (exitCode) {
@@ -332,28 +322,40 @@ function buildPostbid() {
     .pipe(gulp.dest('build/postbid/'));
 }
 
-function startIntegServer(dev = false) {
-  const args = ['./test/fake-server/index.js', `--port=${INTEG_SERVER_PORT}`, `--host=${INTEG_SERVER_HOST}`];
-  if (dev) {
-    args.push('--dev=true')
+function setupE2e(done) {
+  if (!argv.host) {
+    throw new gutil.PluginError({
+      plugin: 'E2E test',
+      message: gutil.colors.red('Host should be defined e.g. ap.localhost, anlocalhost. localhost cannot be used as safari browserstack is not able to connect to localhost')
+    });
   }
-  const srv = spawn('node', args);
-  srv.stdout.on('data', (data) => {
-    console.log(`stdout: ${data}`);
-  });
-  srv.stderr.on('data', (data) => {
-    console.log(`stderr: ${data}`);
-  });
-  return srv;
+  process.env.TEST_SERVER_HOST = argv.host;
+  if (argv.https) {
+    process.env.TEST_SERVER_PROTOCOL = argv.https;
+  }
+  argv.e2e = true;
+  done();
 }
 
-function startLocalServer(options = {}) {
-  connect.server({
-    https: argv.https,
-    port: port,
-    host: INTEG_SERVER_HOST,
-    root: './',
-    livereload: options.livereload
+function injectFakeServerEndpoint() {
+  return gulp.src(['build/dist/*.js'])
+    .pipe(replace('https://ib.adnxs.com/ut/v3/prebid', `http://${FAKE_SERVER_HOST}:${FAKE_SERVER_PORT}`))
+    .pipe(gulp.dest('build/dist'));
+}
+
+function injectFakeServerEndpointDev() {
+  return gulp.src(['build/dev/*.js'])
+    .pipe(replace('https://ib.adnxs.com/ut/v3/prebid', `http://${FAKE_SERVER_HOST}:${FAKE_SERVER_PORT}`))
+    .pipe(gulp.dest('build/dev'));
+}
+
+function startFakeServer() {
+  const fakeServer = spawn('node', ['./test/fake-server/index.js', `--port=${FAKE_SERVER_PORT}`]);
+  fakeServer.stdout.on('data', (data) => {
+    console.log(`stdout: ${data}`);
+  });
+  fakeServer.stderr.on('data', (data) => {
+    console.log(`stderr: ${data}`);
   });
 }
 
@@ -370,7 +372,13 @@ function watchTaskMaker(options = {}) {
       'modules/**/*.js',
     ].concat(options.alsoWatch));
 
-    startLocalServer(options);
+    connect.server({
+      https: argv.https,
+      port: port,
+      host: FAKE_SERVER_HOST,
+      root: './',
+      livereload: options.livereload
+    });
 
     mainWatcher.on('all', options.task());
     done();
@@ -389,7 +397,7 @@ gulp.task(clean);
 gulp.task(escapePostbidConfig);
 
 gulp.task('build-bundle-dev', gulp.series(makeDevpackPkg, gulpBundle.bind(null, true)));
-gulp.task('build-bundle-prod', gulp.series(makeWebpackPkg, addBanner, gulpBundle.bind(null, false)));
+gulp.task('build-bundle-prod', gulp.series(makeWebpackPkg, gulpBundle.bind(null, false)));
 
 // public tasks (dependencies are needed for each task since they can be ran on their own)
 gulp.task('test-only', test);
@@ -406,13 +414,11 @@ gulp.task('build-postbid', gulp.series(escapePostbidConfig, buildPostbid));
 gulp.task('serve', gulp.series(clean, lint, gulp.parallel('build-bundle-dev', watch, test)));
 gulp.task('serve-fast', gulp.series(clean, gulp.parallel('build-bundle-dev', watchFast)));
 gulp.task('serve-and-test', gulp.series(clean, gulp.parallel('build-bundle-dev', watchFast, testTaskMaker({watch: true}))));
-gulp.task('serve-e2e', gulp.series(clean, 'build-bundle-prod', gulp.parallel(() => startIntegServer(), startLocalServer)))
-gulp.task('serve-e2e-dev', gulp.series(clean, 'build-bundle-dev', gulp.parallel(() => startIntegServer(true), startLocalServer)))
+gulp.task('serve-fake', gulp.series(clean, gulp.parallel('build-bundle-dev', watch), injectFakeServerEndpointDev, test, startFakeServer));
 
-gulp.task('default', gulp.series(clean, 'build-bundle-prod'));
+gulp.task('default', gulp.series(clean, makeWebpackPkg));
 
-gulp.task('e2e-test-only', () => runWebdriver({file: argv.file}))
-gulp.task('e2e-test', gulp.series(clean, 'build-bundle-prod', testTaskMaker({e2e: true})));
+gulp.task('e2e-test', gulp.series(clean, setupE2e, gulp.parallel('build-bundle-prod', watch), injectFakeServerEndpoint, test));
 // other tasks
 gulp.task(bundleToStdout);
 gulp.task('bundle', gulpBundle.bind(null, false)); // used for just concatenating pre-built files with no build step

@@ -1,7 +1,7 @@
 import {config} from '../src/config.js';
 import {getGlobal} from '../src/prebidGlobal.js';
 import CONSTANTS from '../src/constants.json';
-import * as events from '../src/events.js';
+import events from '../src/events.js';
 import { isStr, isPlainObject, isBoolean, isFn, hasOwn, logInfo } from '../src/utils.js';
 
 const MODULE_NAME = 'userIdTargeting';

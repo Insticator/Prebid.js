@@ -1,8 +1,14 @@
 import {config} from '../src/config.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
-import {parseQueryStringParameters, parseSizesInput} from '../src/utils.js';
-import {find, includes} from '../src/polyfill.js';
-import {getStorageManager} from '../src/storageManager.js';
+import {
+  parseQueryStringParameters,
+  parseSizesInput
+} from '../src/utils.js';
+import includes from 'core-js-pure/features/array/includes.js';
+import find from 'core-js-pure/features/array/find.js';
+import { getStorageManager } from '../src/storageManager.js';
+
+export const storage = getStorageManager();
 
 const BIDDER_CODE = 'widespace';
 const WS_ADAPTER_VERSION = '2.0.1';
@@ -11,7 +17,6 @@ const LS_KEYS = {
   LC_UID: 'wsLcuid',
   CUST_DATA: 'wsCustomData'
 };
-export const storage = getStorageManager({bidderCode: BIDDER_CODE});
 
 let preReqTime = 0;
 

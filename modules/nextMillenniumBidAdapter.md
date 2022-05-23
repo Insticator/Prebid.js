@@ -21,8 +21,7 @@ Currently module supports only banner mediaType.
         bids: [{
             bidder: 'nextMillennium',
             params: {
-                placement_id: '-1',
-                group_id: '6731'
+                placement_id: '-1'
             }
         }]
     }];

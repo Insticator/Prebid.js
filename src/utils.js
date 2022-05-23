@@ -1,7 +1,11 @@
+/* eslint-disable no-console */
 import { config } from './config.js';
 import clone from 'just-clone';
-import {find, includes} from './polyfill.js';
-import CONSTANTS from './constants.json';
+import find from 'core-js-pure/features/array/find.js';
+import includes from 'core-js-pure/features/array/includes.js';
+
+const CONSTANTS = require('./constants.json');
+
 export { default as deepAccess } from 'dlv/index.js';
 export { default as deepSetValue } from 'dset';
 
@@ -18,18 +22,16 @@ let consoleInfoExists = Boolean(consoleExists && window.console.info);
 let consoleWarnExists = Boolean(consoleExists && window.console.warn);
 let consoleErrorExists = Boolean(consoleExists && window.console.error);
 
-let eventEmitter;
-
-export function _setEventEmitter(emitFn) {
-  // called from events.js - this hoop is to avoid circular imports
-  eventEmitter = emitFn;
-}
-
-function emitEvent(...args) {
-  if (eventEmitter != null) {
-    eventEmitter(...args);
+const emitEvent = (function () {
+  // lazy load events to avoid circular import
+  let ev;
+  return function() {
+    if (ev == null) {
+      ev = require('./events.js');
+    }
+    return ev.emit.apply(ev, arguments);
   }
-}
+})();
 
 // this allows stubbing of utility functions that are used internally by other utility functions
 export const internal = {
@@ -258,21 +260,18 @@ export function getWindowLocation() {
  */
 export function logMessage() {
   if (debugTurnedOn() && consoleLogExists) {
-    // eslint-disable-next-line no-console
     console.log.apply(console, decorateLog(arguments, 'MESSAGE:'));
   }
 }
 
 export function logInfo() {
   if (debugTurnedOn() && consoleInfoExists) {
-    // eslint-disable-next-line no-console
     console.info.apply(console, decorateLog(arguments, 'INFO:'));
   }
 }
 
 export function logWarn() {
   if (debugTurnedOn() && consoleWarnExists) {
-    // eslint-disable-next-line no-console
     console.warn.apply(console, decorateLog(arguments, 'WARNING:'));
   }
   emitEvent(CONSTANTS.EVENTS.AUCTION_DEBUG, {type: 'WARNING', arguments: arguments});
@@ -280,7 +279,6 @@ export function logWarn() {
 
 export function logError() {
   if (debugTurnedOn() && consoleErrorExists) {
-    // eslint-disable-next-line no-console
     console.error.apply(console, decorateLog(arguments, 'ERROR:'));
   }
   emitEvent(CONSTANTS.EVENTS.AUCTION_DEBUG, {type: 'ERROR', arguments: arguments});
@@ -709,7 +707,7 @@ export function getKeyByValue(obj, value) {
 export function getBidderCodes(adUnits = $$PREBID_GLOBAL$$.adUnits) {
   // this could memoize adUnits
   return adUnits.map(unit => unit.bids.map(bid => bid.bidder)
-    .reduce(flatten, [])).reduce(flatten, []).filter(uniques);
+    .reduce(flatten, [])).reduce(flatten).filter(uniques);
 }
 
 export function isGptPubadsDefined() {
@@ -1357,24 +1355,4 @@ export function cyrb53Hash(str, seed = 0) {
   h1 = imul(h1 ^ (h1 >>> 16), 2246822507) ^ imul(h2 ^ (h2 >>> 13), 3266489909);
   h2 = imul(h2 ^ (h2 >>> 16), 2246822507) ^ imul(h1 ^ (h1 >>> 13), 3266489909);
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString();
-}
-
-/**
- * returns a window object, which holds the provided document or null
- * @param {Document} doc
- * @returns {Window}
- */
-export function getWindowFromDocument(doc) {
-  return (doc) ? doc.defaultView : null;
-}
-
-/**
- * returns the result of `JSON.parse(data)`, or undefined if that throws an error.
- * @param data
- * @returns {any}
- */
-export function safeJSONParse(data) {
-  try {
-    return JSON.parse(data);
-  } catch (e) {}
 }
