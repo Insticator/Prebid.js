@@ -9,10 +9,8 @@ import { sizeSupported } from './sizeMapping.js';
 import { ADPOD } from './mediaTypes.js';
 import { hook } from './hook.js';
 import { bidderSettings } from './bidderSettings.js';
-import includes from 'core-js-pure/features/array/includes.js';
-import find from 'core-js-pure/features/array/find.js';
-
-var CONSTANTS = require('./constants.json');
+import {includes, find} from './polyfill.js';
+import CONSTANTS from './constants.json';
 
 var pbTargetingKeys = [];
 
