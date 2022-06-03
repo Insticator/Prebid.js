@@ -70,8 +70,10 @@ function buildBanner(bidRequest) {
 function buildVideo(bidRequest) {
   const w = deepAccess(bidRequest, 'mediaTypes.video.w');
   const h = deepAccess(bidRequest, 'mediaTypes.video.h');
+  const mimes = deepAccess(bidRequest, 'mediaTypes.video.mimes');
 
   return {
+    mimes,
     w,
     h,
   }
@@ -317,6 +319,13 @@ function validateVideo(bid) {
     !validateSize(videoSize)
   ) {
     logError('insticator: video size not specified or invalid');
+    return false;
+  }
+
+  const mimes = deepAccess(bid, 'mediaTypes.video.mimes');
+
+  if (!Array.isArray(mimes) || mimes.length === 0) {
+    logError('insticator: mimes not specified');
     return false;
   }
 
