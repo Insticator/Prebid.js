@@ -1,21 +1,18 @@
-import { config } from '../src/config.js';
-import { BANNER } from '../src/mediaTypes.js';
-import { registerBidder } from '../src/adapters/bidderFactory.js';
-import {
-  deepAccess,
-  generateUUID,
-  logError,
-  isArray,
-} from '../src/utils.js';
-import { getStorageManager } from '../src/storageManager.js';
+import {config} from '../src/config.js';
+import { BANNER, VIDEO } from '../src/mediaTypes.js';
+import {registerBidder} from '../src/adapters/bidderFactory.js';
+import {deepAccess, generateUUID, logError, isArray} from '../src/utils.js';
+import {getStorageManager} from '../src/storageManager.js';
+import find from 'core-js-pure/features/array/find.js';
 
-export const storage = getStorageManager();
 const BIDDER_CODE = 'insticator';
 const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
 const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_COOKIE_EXP = 2592000000; // 30 days
 const BID_TTL = 300; // 5 minutes
-const ASI_REGEX = /^insticator\.com$/;
+const GVLID = 910;
+
+export const storage = getStorageManager(GVLID, BIDDER_CODE);
 
 config.setDefaults({
   insticator: {
@@ -51,8 +48,9 @@ function setUserId(userId) {
   }
 }
 
-function buildImpression(bidRequest) {
+function buildBanner(bidRequest) {
   const format = [];
+  const pos = deepAccess(bidRequest, 'mediaTypes.banner.pos');
   const sizes =
     deepAccess(bidRequest, 'mediaTypes.banner.sizes') || bidRequest.sizes;
 
@@ -64,17 +62,46 @@ function buildImpression(bidRequest) {
   }
 
   return {
+    format,
+    pos,
+  }
+}
+
+function buildVideo(bidRequest) {
+  const w = deepAccess(bidRequest, 'mediaTypes.video.w');
+  const h = deepAccess(bidRequest, 'mediaTypes.video.h');
+  const mimes = deepAccess(bidRequest, 'mediaTypes.video.mimes');
+
+  return {
+    mimes,
+    w,
+    h,
+  }
+}
+
+function buildImpression(bidRequest) {
+  const imp = {
     id: bidRequest.bidId,
     tagid: bidRequest.adUnitCode,
-    banner: {
-      format,
-    },
+    instl: deepAccess(bidRequest, 'ortb2Imp.instl'),
+    secure: location.protocol === 'https:' ? 1 : 0,
     ext: {
+      gpid: deepAccess(bidRequest, 'ortb2Imp.ext.gpid'),
       insticator: {
         adUnitId: bidRequest.params.adUnitId,
       },
     },
-  };
+  }
+
+  if (deepAccess(bidRequest, 'mediaTypes.banner')) {
+    imp.banner = buildBanner(bidRequest);
+  }
+
+  if (deepAccess(bidRequest, 'mediaTypes.video')) {
+    imp.video = buildVideo(bidRequest);
+  }
+
+  return imp;
 }
 
 function buildDevice() {
@@ -121,14 +148,9 @@ function buildUser() {
 }
 
 function extractSchain(bids, requestId) {
-  if (!bids) return;
+  if (!bids || bids.length === 0 || !bids[0].schain) return;
 
-  const bid = bids.find(bid =>
-    bid.schain &&
-    bid.schain.nodes &&
-    bid.schain.nodes.find(node => ASI_REGEX.test(node.asi))
-  );
-  const schain = bid ? bid.schain : bids[0].schain;
+  const schain = bids[0].schain;
   if (schain && schain.nodes && schain.nodes.length && schain.nodes[0]) {
     schain.nodes[0].rid = requestId;
   }
@@ -184,7 +206,7 @@ function buildRequest(validBidRequests, bidderRequest) {
     req.source.ext = { schain };
   }
 
-  const eids = extractEids(bidderRequest.bids);
+  const eids = extractEids(validBidRequests);
 
   if (eids) {
     req.user.ext = { eids };
@@ -194,8 +216,16 @@ function buildRequest(validBidRequests, bidderRequest) {
 }
 
 function buildBid(bid, bidderRequest) {
-  const originalBid = bidderRequest.bids.find((b) => b.bidId === bid.impid);
-  const meta = Object.assign({}, bid.ext.meta, { advertiserDomains: bid.adomain });
+  const originalBid = find(bidderRequest.bids, (b) => b.bidId === bid.impid);
+  let meta = {}
+
+  if (bid.ext && bid.ext.meta) {
+    meta = bid.ext.meta
+  }
+
+  if (bid.adomain) {
+    meta.advertiserDomains = bid.adomain
+  }
 
   return {
     requestId: bid.impid,
@@ -209,7 +239,7 @@ function buildBid(bid, bidderRequest) {
     mediaType: 'banner',
     ad: bid.adm,
     adUnitCode: originalBid.adUnitCode,
-    meta: meta,
+    ...(Object.keys(meta).length > 0 ? {meta} : {})
   };
 }
 
@@ -234,39 +264,93 @@ function validateSizes(sizes) {
   );
 }
 
+function validateAdUnitId(bid) {
+  if (!bid.params.adUnitId) {
+    logError('insticator: missing adUnitId bid parameter');
+    return false;
+  }
+
+  return true;
+}
+
+function validateMediaType(bid) {
+  if (!(BANNER in bid.mediaTypes || VIDEO in bid.mediaTypes)) {
+    logError('insticator: expected banner or video in mediaTypes');
+    return false;
+  }
+
+  return true;
+}
+
+function validateBanner(bid) {
+  const banner = deepAccess(bid, 'mediaTypes.banner');
+
+  if (banner === undefined) {
+    return true;
+  }
+
+  if (
+    !validateSizes(bid.sizes) &&
+    !validateSizes(bid.mediaTypes.banner.sizes)
+  ) {
+    logError('insticator: banner sizes not specified or invalid');
+    return false;
+  }
+
+  return true;
+}
+
+function validateVideo(bid) {
+  const video = deepAccess(bid, 'mediaTypes.video');
+
+  if (video === undefined) {
+    return true;
+  }
+
+  const videoSize = [
+    deepAccess(bid, 'mediaTypes.video.w'),
+    deepAccess(bid, 'mediaTypes.video.h'),
+  ];
+
+  if (
+    !validateSize(videoSize)
+  ) {
+    logError('insticator: video size not specified or invalid');
+    return false;
+  }
+
+  const mimes = deepAccess(bid, 'mediaTypes.video.mimes');
+
+  if (!Array.isArray(mimes) || mimes.length === 0) {
+    logError('insticator: mimes not specified');
+    return false;
+  }
+
+  return true;
+}
+
 export const spec = {
   code: BIDDER_CODE,
-  supportedMediaTypes: [BANNER],
+  gvlid: GVLID,
+  supportedMediaTypes: [ BANNER, VIDEO ],
 
   isBidRequestValid: function (bid) {
-    if (!bid.params.adUnitId) {
-      logError('insticator: missing adUnitId bid parameter');
-      return false;
-    }
-
-    if (!(BANNER in bid.mediaTypes)) {
-      logError('insticator: expected banner in mediaTypes');
-      return false;
-    }
-
-    if (
-      !validateSizes(bid.sizes) &&
-      !validateSizes(bid.mediaTypes.banner.sizes)
-    ) {
-      logError('insticator: banner sizes not specified or invalid');
-      return false;
-    }
-
-    return true;
+    return (
+      validateAdUnitId(bid) &&
+      validateMediaType(bid) &&
+      validateBanner(bid) &&
+      validateVideo(bid)
+    );
   },
-
   buildRequests: function (validBidRequests, bidderRequest) {
     const requests = [];
+    let endpointUrl = config.getConfig('insticator.endpointUrl') || ENDPOINT;
+    endpointUrl = endpointUrl.replace(/^http:/, 'https:');
 
     if (validBidRequests.length > 0) {
       requests.push({
         method: 'POST',
-        url: config.getConfig('insticator.endpointUrl') || ENDPOINT,
+        url: endpointUrl,
         options: {
           contentType: 'application/json',
           withCredentials: true,
