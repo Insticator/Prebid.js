@@ -50,7 +50,7 @@ jobs:
           from: build/dist/prebid.js
           to: '"$UPLOAD_DEST"'
           arguments: --cache-control 'max-age=86400'
-  build_v6:
+  build_v7:
     <<: *environment
     steps:
       - checkout
@@ -60,7 +60,7 @@ jobs:
       - save_cache: *save_dep_cache
       - run: *install
       - run:
-          name: Build Prebid.js version 6
+          name: Build Prebid.js version 7
           command: gulp build --modules=modules.json
       - aws-s3/copy:
           from: build/dist/prebid.js
@@ -77,9 +77,9 @@ workflows:
             branches:
               only:
                 - master
-      - build_v6:
+      - build_v7:
           context: org-aws
           filters:
             branches:
               only:
-                - prebid6
+                - prebid7
