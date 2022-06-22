@@ -35,6 +35,7 @@ describe('InsticatorBidAdapter', function () {
         ],
         w: 250,
         h: 300,
+        placement: 2,
       },
     },
     bidId: '30b31c1838de1e',
@@ -149,6 +150,25 @@ describe('InsticatorBidAdapter', function () {
         ...{
           mediaTypes: {
             video: {},
+          }
+        }
+      })).to.be.false;
+    });
+
+    it('should return false if video placement is not a number', () => {
+      expect(spec.isBidRequestValid({
+        ...bidRequest,
+        ...{
+          mediaTypes: {
+            video: {
+              mimes: [
+                'video/mp4',
+                'video/mpeg',
+              ],
+              w: 250,
+              h: 300,
+              placement: 'NaN',
+            },
           }
         }
       })).to.be.false;
@@ -268,6 +288,7 @@ describe('InsticatorBidAdapter', function () {
       expect(data.imp).to.be.an('array').that.have.lengthOf(1);
       expect(data.imp).to.deep.equal([{
         id: bidRequest.bidId,
+        secure: 0,
         tagid: bidRequest.adUnitCode,
         instl: 1,
         secure: 0,
@@ -284,6 +305,7 @@ describe('InsticatorBidAdapter', function () {
           ],
           h: 300,
           w: 250,
+          placement: 2,
         },
         ext: {
           gpid: bidRequest.ortb2Imp.ext.gpid,
