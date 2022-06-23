@@ -56,15 +56,23 @@ export const spec = {
    */
   buildRequests: (validBidRequests, bidderRequest) => {
     const bids = validBidRequests.map(bid => {
+      let mediaType;
+
+      if (deepAccess(bid, 'mediaTypes.video')) {
+        mediaType = 'video';
+      } else if (deepAccess(bid, 'mediaTypes.banner')) {
+        mediaType = 'display';
+      }
+
       let slotIdentifier = _validateSlot(bid);
       if (/^[\/]?[\d]+[[\/].+[\/]?]?$/.test(slotIdentifier)) {
         slotIdentifier = slotIdentifier.charAt(0) === '/' ? slotIdentifier : '/' + slotIdentifier;
         return {
-          [`${slotIdentifier}|${bid.bidId}`]: `${_validateSize(bid)}${_validateFloor(bid)}${_validateGPID(bid)}`
+          [`${slotIdentifier}|${bid.bidId}`]: `${_validateSize(bid)}|${_validateFloor(bid)}${_validateGPID(bid)}${_validateMediaType(mediaType)}`
         }
       } else if (/^[0-9a-fA-F]{20}$/.test(slotIdentifier) && slotIdentifier.length === 20) {
         return {
-          [bid.bidId]: `${slotIdentifier}|${_validateSize(bid)}${_validateFloor(bid)}${_validateGPID(bid)}`
+          [bid.bidId]: `${slotIdentifier}|${_validateSize(bid)}|${_validateFloor(bid)}${_validateGPID(bid)}${_validateMediaType(mediaType)}`
         }
       } else {
         logError(`The ad unit code or Sonobi Placement id for slot ${bid.bidId} is invalid`);
@@ -277,7 +285,7 @@ export const spec = {
           });
         });
       }
-    } catch (e) {}
+    } catch (e) { }
     return syncs;
   }
 };
@@ -290,7 +298,7 @@ function _findBidderRequest(bidderRequests, bidId) {
   }
 }
 
-function _validateSize (bid) {
+function _validateSize(bid) {
   if (deepAccess(bid, 'mediaTypes.video')) {
     return ''; // Video bids arent allowed to override sizes via the trinity request
   }
@@ -308,18 +316,18 @@ function _validateSize (bid) {
   }
 }
 
-function _validateSlot (bid) {
+function _validateSlot(bid) {
   if (bid.params.ad_unit) {
     return bid.params.ad_unit;
   }
   return bid.params.placement_id;
 }
 
-function _validateFloor (bid) {
+function _validateFloor(bid) {
   const floor = getBidFloor(bid);
 
   if (floor) {
-    return `|f=${floor}`;
+    return `f=${floor},`;
   }
   return '';
 }
@@ -328,9 +336,20 @@ function _validateGPID(bid) {
   const gpid = deepAccess(bid, 'ortb2Imp.ext.data.pbadslot') || deepAccess(getGptSlotInfoForAdUnitCode(bid.adUnitCode), 'gptSlot') || bid.params.ad_unit;
 
   if (gpid) {
-    return `|gpid=${gpid}`
+    return `gpid=${gpid},`
   }
   return ''
+}
+
+function _validateMediaType(mediaType) {
+  let mediaTypeValidation = '';
+  if (mediaType === 'video') {
+    mediaTypeValidation = 'c=v,';
+  } else if (mediaType === 'display') {
+    mediaTypeValidation = 'c=d,';
+  }
+
+  return mediaTypeValidation;
 }
 
 const _creative = (mediaType, referer) => (sbiDc, sbiAid) => {
@@ -345,7 +364,7 @@ function _videoCreative(sbiDc, sbiAid, referer) {
   return `https://${sbiDc}apex.go.sonobi.com/vast.xml?vid=${sbiAid}&ref=${encodeURIComponent(referer)}`
 }
 
-function _getBidIdFromTrinityKey (key) {
+function _getBidIdFromTrinityKey(key) {
   return key.split('|').slice(-1)[0]
 }
 
