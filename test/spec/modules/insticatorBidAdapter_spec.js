@@ -19,7 +19,7 @@ describe('InsticatorBidAdapter', function () {
       adUnitId: '1a2b3c4d5e6f1a2b3c4d',
       user: {
         yob: 1984,
-        gender: 'M'
+        gender: 'M',
       },
     },
     sizes: [[300, 250], [300, 600]],
