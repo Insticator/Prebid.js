@@ -9,7 +9,7 @@ const BIDDER_CODE = 'insticator';
 const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
 const USER_ID_KEY = 'hb_insticator_uid';
 const USER_ID_COOKIE_EXP = 2592000000; // 30 days
-const BID_TTL = 300; // 5 minutes
+const BID_TTL = 301; // 5 minutes
 const GVLID = 910;
 
 export const storage = getStorageManager({gvlid: GVLID, bidderCode: BIDDER_CODE});
