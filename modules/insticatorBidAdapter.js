@@ -27,30 +27,55 @@ config.setDefaults({
 });
 
 function getUserId() {
-  let uid;
-
-  if (storage.localStorageIsEnabled()) {
-    uid = localStorage.getItem(USER_ID_KEY);
-  } else {
-    uid = storage.getCookie(USER_ID_KEY);
+  let uid = localStorage.getItem(USER_ID_KEY);
+  if (uid) {
+    return uid;
   }
 
-  if (uid && uid.length !== 36) {
-    uid = undefined;
+  uid = generateUUID();
+  localStorage.setItem(USER_ID_KEY, uid);
+
+  uid = localStorage.getItem(USER_ID_KEY);
+  if (!uid) {
+
   }
 
   return uid;
 }
 
-function setUserId(userId) {
-  if (storage.localStorageIsEnabled()) {
-    localStorage.setItem(USER_ID_KEY, userId);
+function isLocalStoreEnabled() {
+  let enabled = false;
+
+  try {
+    localStorage.setItem('prebid.localStoreTest', 'true');
+    enabled = Boolean(localStorage.getItem('prebid.localStoreTest'));
+  } catch (err) {
+    return false
+  } finally {
+    if (enabled) {
+      localStorage.removeItem('insticator.prebid.localStoreTest');
+    }
   }
 
-  if (storage.cookiesAreEnabled()) {
-    const expires = new Date(Date.now() + USER_ID_COOKIE_EXP).toISOString();
-    storage.setCookie(USER_ID_KEY, userId, expires);
+  return enabled;
+}
+
+function isCookieEnabled() {
+  let enabled = false;
+
+  try {
+    const expireIn = new Date(Date.now() + 24 * 60 * 60 * 10000).toUTCString();
+    storage.setCookie('insticator.prebid.cookieTest', 'true', expireIn);
+    enabled = Boolean(storage.getCookie('insticator.prebid.cookieTest'));
+  } catch (err) {
+    return false;
+  } finally {
+    if (enabled) {
+      storage.setCookie('insticator.prebid.cookieTest', 'true', new Date(Date.now()).toUTCString());
+    }
   }
+
+  return enabled;
 }
 
 function buildImpression(bidRequest) {
@@ -128,11 +153,9 @@ function buildRegs(bidderRequest) {
 }
 
 function buildUser(bid) {
-  const userId = getUserId() || generateUUID();
+  const userId = getUserId();
   const yob = deepAccess(bid, 'params.user.yob')
   const gender = deepAccess(bid, 'params.user.gender')
-
-  setUserId(userId);
 
   return {
     id: userId,
