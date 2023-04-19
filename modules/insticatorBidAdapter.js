@@ -28,16 +28,20 @@ config.setDefaults({
 
 function getUserId() {
   let uid = storage.getCookie(USER_ID_KEY);
-  if (uid) {
+  if (uid && isUserIdValid(uid)) {
     return uid;
   }
 
   uid = localStorage.getItem(USER_ID_KEY);
-  if (uid) {
+  if (uid && isUserIdValid(uid)) {
     return uid;
   }
 
   return generateUserId()
+}
+
+function isUserIdValid(uid) {
+  return uid && uid.length === 36;
 }
 
 function generateUserId() {
