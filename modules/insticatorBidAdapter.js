@@ -141,10 +141,7 @@ function buildDevice() {
     w: window.innerWidth,
     h: window.innerHeight,
     js: true,
-    ext: {
-      localStorage: storage.localStorageIsEnabled(),
-      cookies: storage.cookiesAreEnabled(),
-    },
+    ext: {},
   };
 
   const deviceConfig = config.getConfig('device');
