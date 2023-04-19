@@ -13,7 +13,7 @@ import find from 'core-js-pure/features/array/find.js';
 const BIDDER_CODE = 'insticator';
 const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
 const USER_ID_KEY = 'hb_insticator_uid';
-const USER_ID_COOKIE_EXP = 2592000000; // 30 days
+const USER_ID_COOKIE_EXP = 7776000000; // 90 days
 const BID_TTL = 300; // 5 minutes
 const GVLID = 910;
 
@@ -27,17 +27,30 @@ config.setDefaults({
 });
 
 function getUserId() {
-  let uid = localStorage.getItem(USER_ID_KEY);
+  let uid = storage.getCookie(USER_ID_KEY);
   if (uid) {
     return uid;
   }
 
-  uid = generateUUID();
-  localStorage.setItem(USER_ID_KEY, uid);
-
   uid = localStorage.getItem(USER_ID_KEY);
-  if (!uid) {
+  if (uid) {
+    return uid;
+  }
 
+  return generateUserId()
+}
+
+function generateUserId() {
+  const uid = generateUUID();
+
+  if (isCookieEnabled()) {
+    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+    storage.setCookie(USER_ID_KEY, uid, expireIn);
+    return uid;
+  }
+
+  if (isLocalStoreEnabled()) {
+    localStorage.setItem(USER_ID_KEY, uid);
   }
 
   return uid;
@@ -64,7 +77,7 @@ function isCookieEnabled() {
   let enabled = false;
 
   try {
-    const expireIn = new Date(Date.now() + 24 * 60 * 60 * 10000).toUTCString();
+    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
     storage.setCookie('insticator.prebid.cookieTest', 'true', expireIn);
     enabled = Boolean(storage.getCookie('insticator.prebid.cookieTest'));
   } catch (err) {
