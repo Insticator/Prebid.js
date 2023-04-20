@@ -8,7 +8,7 @@ import find from 'core-js-pure/features/array/find.js';
 const BIDDER_CODE = 'insticator';
 const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
 const USER_ID_KEY = 'hb_insticator_uid';
-const USER_ID_COOKIE_EXP = 2592000000; // 30 days
+const USER_ID_COOKIE_EXP = 7776000000; // 90 days
 const BID_TTL = 300; // 5 minutes
 const GVLID = 910;
 
@@ -22,30 +22,74 @@ config.setDefaults({
 });
 
 function getUserId() {
-  let uid;
-
-  if (storage.localStorageIsEnabled()) {
-    uid = localStorage.getItem(USER_ID_KEY);
-  } else {
-    uid = storage.getCookie(USER_ID_KEY);
+  let uid = storage.getCookie(USER_ID_KEY);
+  if (uid && isUserIdValid(uid)) {
+    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+    storage.setCookie(USER_ID_KEY, uid, expireIn);
+    return uid;
   }
 
-  if (uid && uid.length !== 36) {
-    uid = undefined;
+  uid = localStorage.getItem(USER_ID_KEY);
+  if (uid && isUserIdValid(uid)) {
+    return uid;
+  }
+
+  return generateUserId()
+}
+
+function isUserIdValid(uid) {
+  return uid && uid.length === 36;
+}
+
+function generateUserId() {
+  const uid = generateUUID();
+
+  if (isCookieEnabled()) {
+    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+    storage.setCookie(USER_ID_KEY, uid, expireIn);
+    return uid;
+  }
+
+  if (isLocalStoreEnabled()) {
+    localStorage.setItem(USER_ID_KEY, uid);
   }
 
   return uid;
 }
 
-function setUserId(userId) {
-  if (storage.localStorageIsEnabled()) {
-    localStorage.setItem(USER_ID_KEY, userId);
+function isLocalStoreEnabled() {
+  let enabled = false;
+
+  try {
+    localStorage.setItem('prebid.localStoreTest', 'true');
+    enabled = Boolean(localStorage.getItem('prebid.localStoreTest'));
+  } catch (err) {
+    return false
+  } finally {
+    if (enabled) {
+      localStorage.removeItem('insticator.prebid.localStoreTest');
+    }
   }
 
-  if (storage.cookiesAreEnabled()) {
-    const expires = new Date(Date.now() + USER_ID_COOKIE_EXP).toISOString();
-    storage.setCookie(USER_ID_KEY, userId, expires);
+  return enabled;
+}
+
+function isCookieEnabled() {
+  let enabled = false;
+
+  try {
+    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+    storage.setCookie('insticator.prebid.cookieTest', 'true', expireIn);
+    enabled = Boolean(storage.getCookie('insticator.prebid.cookieTest'));
+  } catch (err) {
+    return false;
+  } finally {
+    if (enabled) {
+      storage.setCookie('insticator.prebid.cookieTest', 'true', new Date(Date.now()).toUTCString());
+    }
   }
+
+  return enabled;
 }
 
 function buildBanner(bidRequest) {
@@ -111,10 +155,7 @@ function buildDevice() {
     w: window.innerWidth,
     h: window.innerHeight,
     js: true,
-    ext: {
-      localStorage: storage.localStorageIsEnabled(),
-      cookies: storage.cookiesAreEnabled(),
-    },
+    ext: {},
   };
 
   const deviceConfig = config.getConfig('device');
@@ -140,9 +181,7 @@ function buildRegs(bidderRequest) {
 }
 
 function buildUser() {
-  const userId = getUserId() || generateUUID();
-
-  setUserId(userId);
+  const userId = getUserId();
 
   return {
     id: userId,
