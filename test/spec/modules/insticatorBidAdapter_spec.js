@@ -335,7 +335,7 @@ describe('InsticatorBidAdapter', function () {
       const requests = spec.buildRequests([bidRequest], bidderRequest);
       const data = JSON.parse(requests[0].data);
 
-      expect(data.user.id).to.equal(USER_ID_STUBBED); 
+      expect(data.user.id).to.equal(USER_ID_STUBBED);
     });
     it('should return empty regs object if no gdprConsent is passed', function () {
       const requests = spec.buildRequests([bidRequest], { ...bidderRequest, ...{ gdprConsent: false } });
