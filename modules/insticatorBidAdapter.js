@@ -168,7 +168,7 @@ function buildUser(bid) {
   const gender = deepAccess(bid, 'params.user.gender')
 
   return {
-    buyeruid: userId,
+    id: userId,
     yob,
     gender,
   };
