@@ -184,7 +184,7 @@ function buildUser() {
   const userId = getUserId();
 
   return {
-    id: userId,
+    buyeruid: userId,
   };
 }
 
