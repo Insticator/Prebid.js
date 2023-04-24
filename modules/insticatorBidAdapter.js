@@ -22,12 +22,12 @@ config.setDefaults({
 });
 
 function getUserId() {
-  uid = localStorage.getItem(USER_ID_KEY);
+  let uid = localStorage.getItem(USER_ID_KEY);
   if (uid && isUserIdValid(uid)) {
     return uid;
   }
 
-  let uid = storage.getCookie(USER_ID_KEY);
+  uid = storage.getCookie(USER_ID_KEY);
   if (uid && isUserIdValid(uid)) {
     const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
     storage.setCookie(USER_ID_KEY, uid, expireIn);
