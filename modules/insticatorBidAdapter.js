@@ -393,7 +393,10 @@ export const spec = {
   buildRequests: function (validBidRequests, bidderRequest) {
     const requests = [];
     let endpointUrl = config.getConfig('insticator.endpointUrl') || ENDPOINT;
-    endpointUrl = endpointUrl.replace(/^http:/, 'https:');
+
+    if (location.hostname !== 'localhost' || location.hostname !== '127.0.0.1') {
+      endpointUrl = endpointUrl.replace(/^http:/, 'https:');
+    }
 
     if (validBidRequests.length > 0) {
       requests.push({
