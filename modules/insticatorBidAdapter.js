@@ -394,7 +394,7 @@ export const spec = {
     const requests = [];
     let endpointUrl = config.getConfig('insticator.endpointUrl') || ENDPOINT;
 
-    if (location.hostname !== 'localhost' || location.hostname !== '127.0.0.1') {
+    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
       endpointUrl = endpointUrl.replace(/^http:/, 'https:');
     }
 
