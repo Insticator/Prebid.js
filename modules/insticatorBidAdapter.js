@@ -7,7 +7,7 @@ import {find} from '../src/polyfill.js';
 
 const BIDDER_CODE = 'insticator';
 const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
-const USER_ID_KEY = 'hb_insticator_uid';
+const USER_ID_KEY = 'instUid';
 const USER_ID_COOKIE_EXP = 7776000000; // 90 days
 const BID_TTL = 300; // 5 minutes
 const GVLID = 910;
@@ -24,13 +24,9 @@ config.setDefaults({
 function getUserId() {
   let uid = localStorage.getItem(USER_ID_KEY);
   if (uid && isUserIdValid(uid)) {
-    return uid;
-  }
-
-  uid = storage.getCookie(USER_ID_KEY);
-  if (uid && isUserIdValid(uid)) {
     const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    storage.setCookie(USER_ID_KEY, uid, expireIn);
+    const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
+    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
     return uid;
   }
 
@@ -44,34 +40,13 @@ function isUserIdValid(uid) {
 function generateUserId() {
   const uid = generateUUID();
 
-  if (isLocalStoreEnabled()) {
-    localStorage.setItem(USER_ID_KEY, uid);
-    return uid;
-  }
-
   if (isCookieEnabled()) {
     const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    storage.setCookie(USER_ID_KEY, uid, expireIn);
+    const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
+    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
   }
 
   return uid;
-}
-
-function isLocalStoreEnabled() {
-  let enabled = false;
-
-  try {
-    localStorage.setItem('prebid.localStoreTest', 'true');
-    enabled = Boolean(localStorage.getItem('prebid.localStoreTest'));
-  } catch (err) {
-    return false
-  } finally {
-    if (enabled) {
-      localStorage.removeItem('insticator.prebid.localStoreTest');
-    }
-  }
-
-  return enabled;
 }
 
 function isCookieEnabled() {
@@ -321,7 +296,10 @@ export const spec = {
   buildRequests: function (validBidRequests, bidderRequest) {
     const requests = [];
     let endpointUrl = config.getConfig('insticator.endpointUrl') || ENDPOINT;
-    endpointUrl = endpointUrl.replace(/^http:/, 'https:');
+
+    if (endpointUrl.indexOf('localhost') === -1) {
+      endpointUrl = endpointUrl.replace(/^http:/, 'https:');
+    }
 
     if (validBidRequests.length > 0) {
       requests.push({
