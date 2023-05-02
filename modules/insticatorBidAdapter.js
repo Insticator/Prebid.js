@@ -25,7 +25,8 @@ function getUserId() {
   let uid = storage.getCookie(USER_ID_KEY);
   if (uid && isUserIdValid(uid)) {
     const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    storage.setCookie(USER_ID_KEY, uid, expireIn);
+    const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
+    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
     return uid;
   }
 
@@ -41,7 +42,8 @@ function generateUserId() {
 
   if (isCookieEnabled()) {
     const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    storage.setCookie(USER_ID_KEY, uid, expireIn);
+    const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
+    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
   }
 
   return uid;
