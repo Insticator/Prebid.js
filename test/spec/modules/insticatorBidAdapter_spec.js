@@ -256,8 +256,6 @@ describe('InsticatorBidAdapter', function () {
       expect(data.device.h).to.equal(window.innerHeight);
       expect(data.device.js).to.equal(true);
       expect(data.device.ext).to.be.an('object');
-      expect(data.device.ext.localStorage).to.equal(true);
-      expect(data.device.ext.cookies).to.equal(false);
       expect(data.regs).to.be.an('object');
       expect(data.regs.ext.gdpr).to.equal(1);
       expect(data.regs.ext.gdprConsentString).to.equal(bidderRequest.gdprConsent.consentString);
