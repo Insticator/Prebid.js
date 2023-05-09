@@ -72,7 +72,9 @@ function buildImpression(bidRequest) {
   const ext = {
     insticator: {
       adUnitId: bidRequest.params.adUnitId,
+      adUnitName: bidRequest.params.adUnitName
     },
+    impressionType: bidRequest.params.impressionType
   }
 
   const sizes =
