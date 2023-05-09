@@ -110,7 +110,9 @@ function buildImpression(bidRequest) {
       gpid: deepAccess(bidRequest, 'ortb2Imp.ext.gpid'),
       insticator: {
         adUnitId: bidRequest.params.adUnitId,
+        adUnitName: bidRequest.params.adUnitName
       },
+      impressionType: bidRequest.params.impressionType
     },
   }
 

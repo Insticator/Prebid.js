@@ -2,8 +2,7 @@ import { expect } from 'chai';
 import { spec, storage } from '../../../modules/insticatorBidAdapter.js';
 import { newBidder } from 'src/adapters/bidderFactory.js'
 
-const USER_ID_KEY = 'hb_insticator_uid';
-const USER_ID_DUMMY_VALUE = '74f78609-a92d-4cf1-869f-1b244bbfb5d2';
+const USER_ID_KEY = 'instUid';
 const USER_ID_STUBBED = '12345678-1234-1234-1234-123456789abc';
 
 let utils = require('src/utils.js');
@@ -221,10 +220,6 @@ describe('InsticatorBidAdapter', function () {
     });
 
     it('should return valid data if array of bids is valid', function () {
-      localStorageIsEnabledStub.returns(true);
-      cookiesAreEnabledStub.returns(false);
-      localStorage.setItem(USER_ID_KEY, USER_ID_DUMMY_VALUE);
-
       const requests = spec.buildRequests([bidRequest], bidderRequest);
       const data = JSON.parse(requests[0].data);
 
@@ -260,7 +255,7 @@ describe('InsticatorBidAdapter', function () {
       expect(data.regs.ext.gdpr).to.equal(1);
       expect(data.regs.ext.gdprConsentString).to.equal(bidderRequest.gdprConsent.consentString);
       expect(data.user).to.be.an('object');
-      expect(data.user.id).to.equal(USER_ID_DUMMY_VALUE);
+      expect(data.user.id).to.equal(USER_ID_STUBBED);
       expect(data.user.ext).to.have.property('eids');
       expect(data.user.ext.eids).to.deep.equal([
         {
