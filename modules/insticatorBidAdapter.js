@@ -111,8 +111,7 @@ function buildImpression(bidRequest) {
       insticator: {
         adUnitId: bidRequest.params.adUnitId,
         adUnitName: bidRequest.params.adUnitName,
-        impressionType: bidRequest.params.impressionType
-      },
+        impressionType: bidRequest.params.impressionType,
     },
   }
 
