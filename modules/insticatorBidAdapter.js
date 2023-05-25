@@ -22,7 +22,7 @@ config.setDefaults({
 });
 
 function getUserId() {
-  let uid = localStorage.getItem(USER_ID_KEY);
+  let uid = storage.getCookie(USER_ID_KEY);
   if (uid && isUserIdValid(uid)) {
     const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
     const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
