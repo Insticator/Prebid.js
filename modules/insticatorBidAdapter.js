@@ -112,7 +112,8 @@ function buildImpression(bidRequest) {
         adUnitId: bidRequest.params.adUnitId,
         adUnitName: bidRequest.params.adUnitName,
         impressionType: bidRequest.params.impressionType,
-    },
+      }
+    }
   }
 
   if (deepAccess(bidRequest, 'mediaTypes.banner')) {
