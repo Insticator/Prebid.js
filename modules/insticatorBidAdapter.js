@@ -73,8 +73,24 @@ function buildImpression(bidRequest) {
     insticator: {
       adUnitId: bidRequest.params.adUnitId,
       adUnitName: bidRequest.params.adUnitName,
-      impressionType: bidRequest.params.impressionType
     },
+  }
+
+  /**
+   * set impression type using header bidding wrapper's API
+   * this is Insticator header bidding wrapper specific
+   */
+  // eslint-disable-next-line no-undef
+  if (bidRequest.adUnitCode && Insticator.getAdUnitStates) {
+    try {
+      // eslint-disable-next-line no-undef
+      const adUnits = Insticator.getAdUnitStates();
+      const adUnit = adUnits[bidRequest.adUnitCode]
+      // eslint-disable-next-line no-undef
+      if (adUnit) ext.insticator.impressionType = adUnit.timesRefreshed > 0 ? adUnit.refreshType : 'il';
+    } catch (e) {
+      console.warn(e)
+    }
   }
 
   const sizes =
