@@ -26,7 +26,7 @@ function getUserId() {
   if (uid && isUserIdValid(uid)) {
     const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
     const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
-    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
+    document.cookie = `${USER_ID_KEY}=${uid}; expires=${expireIn}; path=/; domain=.${domain}; SameSite=true; Secure`;
     return uid;
   }
 
@@ -39,32 +39,10 @@ function isUserIdValid(uid) {
 
 function generateUserId() {
   const uid = generateUUID();
-
-  if (isCookieEnabled()) {
-    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
-    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
-  }
-
+  const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+  const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
+  document.cookie = `${USER_ID_KEY}=${uid}; expires=${expireIn}; path=/; domain=.${domain}; SameSite=true; Secure`;
   return uid;
-}
-
-function isCookieEnabled() {
-  let enabled = false;
-
-  try {
-    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    storage.setCookie('insticator.prebid.cookieTest', 'true', expireIn);
-    enabled = Boolean(storage.getCookie('insticator.prebid.cookieTest'));
-  } catch (err) {
-    return false;
-  } finally {
-    if (enabled) {
-      storage.setCookie('insticator.prebid.cookieTest', 'true', new Date(Date.now()).toUTCString());
-    }
-  }
-
-  return enabled;
 }
 
 function buildImpression(bidRequest) {
