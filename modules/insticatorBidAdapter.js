@@ -7,7 +7,7 @@ import {find} from '../src/polyfill.js';
 
 const BIDDER_CODE = 'insticator';
 const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
-const USER_ID_KEY = 'instUid';
+const USER_ID_KEY = 'insticator_uid';
 const USER_ID_COOKIE_EXP = 7776000000; // 90 days
 const BID_TTL = 300; // 5 minutes
 const GVLID = 910;
@@ -22,49 +22,30 @@ config.setDefaults({
 });
 
 function getUserId() {
-  let uid = storage.getCookie(USER_ID_KEY);
+  let uid = getUserIdCookie();
   if (uid && isUserIdValid(uid)) {
-    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
-    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
+    createUserIdCookie(uid);
     return uid;
   }
 
-  return generateUserId()
+  uid = generateUUID();
+  createUserIdCookie(uid);
+  return uid;
 }
 
 function isUserIdValid(uid) {
   return uid && uid.length === 36;
 }
 
-function generateUserId() {
-  const uid = generateUUID();
-
-  if (isCookieEnabled()) {
-    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
-    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
-  }
-
-  return uid;
+function getUserIdCookie() {
+  let m = window.document.cookie.match('(^|;)\\s*' + USER_ID_KEY + '\\s*=\\s*([^;]*)\\s*(;|$)');
+  return m ? decodeURIComponent(m[2]) : null;
 }
 
-function isCookieEnabled() {
-  let enabled = false;
-
-  try {
-    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    storage.setCookie('insticator.prebid.cookieTest', 'true', expireIn);
-    enabled = Boolean(storage.getCookie('insticator.prebid.cookieTest'));
-  } catch (err) {
-    return false;
-  } finally {
-    if (enabled) {
-      storage.setCookie('insticator.prebid.cookieTest', 'true', new Date(Date.now()).toUTCString());
-    }
-  }
-
-  return enabled;
+function createUserIdCookie(uid) {
+  const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+  const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
+  document.cookie = `${USER_ID_KEY}=${uid}; expires=${expireIn}; path=/; domain=.${domain}; SameSite=true; Secure`;
 }
 
 function buildImpression(bidRequest) {
