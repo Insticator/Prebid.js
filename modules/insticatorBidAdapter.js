@@ -1,5 +1,5 @@
 import {config} from '../src/config.js';
-import {BANNER, VIDEO} from '../src/mediaTypes.js';
+import {BANNER} from '../src/mediaTypes.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {deepAccess, generateUUID, logError, isArray} from '../src/utils.js';
 import {getStorageManager} from '../src/storageManager.js';
@@ -7,8 +7,8 @@ import {find} from '../src/polyfill.js';
 
 const BIDDER_CODE = 'insticator';
 const ENDPOINT = 'https://ex.ingage.tech/v1/openrtb'; // production endpoint
-const USER_ID_KEY = 'hb_insticator_uid';
-const USER_ID_COOKIE_EXP = 2592000000; // 30 days
+const USER_ID_KEY = 'instUid';
+const USER_ID_COOKIE_EXP = 7776000000; // 90 days
 const BID_TTL = 300; // 5 minutes
 const GVLID = 910;
 
@@ -22,35 +22,77 @@ config.setDefaults({
 });
 
 function getUserId() {
-  let uid;
-
-  if (storage.localStorageIsEnabled()) {
-    uid = storage.getDataFromLocalStorage(USER_ID_KEY);
-  } else {
-    uid = storage.getCookie(USER_ID_KEY);
+  let uid = storage.getCookie(USER_ID_KEY);
+  if (uid && isUserIdValid(uid)) {
+    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+    const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
+    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
+    return uid;
   }
 
-  if (uid && uid.length !== 36) {
-    uid = undefined;
+  return generateUserId()
+}
+
+function isUserIdValid(uid) {
+  return uid && uid.length === 36;
+}
+
+function generateUserId() {
+  const uid = generateUUID();
+
+  if (isCookieEnabled()) {
+    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+    const domain = window.location.hostname.match(/[^.]*\.[^.]{2,3}(?:\.[^.]{2,3})?$/mg);
+    storage.setCookie(USER_ID_KEY, uid, expireIn, 'none', `.${domain}`);
   }
 
   return uid;
 }
 
-function setUserId(userId) {
-  if (storage.localStorageIsEnabled()) {
-    storage.setDataInLocalStorage(USER_ID_KEY, userId);
+function isCookieEnabled() {
+  let enabled = false;
+
+  try {
+    const expireIn = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
+    storage.setCookie('insticator.prebid.cookieTest', 'true', expireIn);
+    enabled = Boolean(storage.getCookie('insticator.prebid.cookieTest'));
+  } catch (err) {
+    return false;
+  } finally {
+    if (enabled) {
+      storage.setCookie('insticator.prebid.cookieTest', 'true', new Date(Date.now()).toUTCString());
+    }
   }
 
-  if (storage.cookiesAreEnabled()) {
-    const expires = new Date(Date.now() + USER_ID_COOKIE_EXP).toUTCString();
-    storage.setCookie(USER_ID_KEY, userId, expires);
-  }
+  return enabled;
 }
 
-function buildBanner(bidRequest) {
+function buildImpression(bidRequest) {
   const format = [];
-  const pos = deepAccess(bidRequest, 'mediaTypes.banner.pos');
+  const ext = {
+    insticator: {
+      adUnitId: bidRequest.params.adUnitId,
+      adUnitName: bidRequest.params.adUnitName,
+    },
+  }
+
+  /**
+   * set impression type using header bidding wrapper's API
+   * this is Insticator header bidding wrapper specific
+   */
+  // eslint-disable-next-line no-undef
+  if (bidRequest.adUnitCode && Insticator.getAdUnitStates) {
+    try {
+      // eslint-disable-next-line no-undef
+      const adUnits = Insticator.getAdUnitStates();
+      const adUnit = adUnits[bidRequest.adUnitCode]
+      // eslint-disable-next-line no-undef
+      if (adUnit) ext.insticator.impressionType = adUnit.timesRefreshed > 0 ? adUnit.refreshType : 'il';
+    } catch (e) {
+      console.warn(e)
+    }
+  }
+
   const sizes =
     deepAccess(bidRequest, 'mediaTypes.banner.sizes') || bidRequest.sizes;
 
@@ -61,49 +103,27 @@ function buildBanner(bidRequest) {
     });
   }
 
-  return {
-    format,
-    pos,
-  }
-}
+  const gpid = deepAccess(bidRequest, 'ortb2Imp.ext.gpid');
 
-function buildVideo(bidRequest) {
-  const w = deepAccess(bidRequest, 'mediaTypes.video.w');
-  const h = deepAccess(bidRequest, 'mediaTypes.video.h');
-  const mimes = deepAccess(bidRequest, 'mediaTypes.video.mimes');
-  const placement = deepAccess(bidRequest, 'mediaTypes.video.placement') || 3;
+  if (gpid) {
+    ext.gpid = gpid;
+  }
+
+  const instl = deepAccess(bidRequest, 'ortb2Imp.instl')
+  const secure = location.protocol === 'https:' ? 1 : 0;
+  const pos = deepAccess(bidRequest, 'mediaTypes.banner.pos');
 
   return {
-    placement,
-    mimes,
-    w,
-    h,
-  }
-}
-
-function buildImpression(bidRequest) {
-  const imp = {
     id: bidRequest.bidId,
     tagid: bidRequest.adUnitCode,
-    instl: deepAccess(bidRequest, 'ortb2Imp.instl'),
-    secure: location.protocol === 'https:' ? 1 : 0,
-    ext: {
-      gpid: deepAccess(bidRequest, 'ortb2Imp.ext.gpid'),
-      insticator: {
-        adUnitId: bidRequest.params.adUnitId,
-      },
+    instl,
+    secure,
+    banner: {
+      format,
+      pos,
     },
-  }
-
-  if (deepAccess(bidRequest, 'mediaTypes.banner')) {
-    imp.banner = buildBanner(bidRequest);
-  }
-
-  if (deepAccess(bidRequest, 'mediaTypes.video')) {
-    imp.video = buildVideo(bidRequest);
-  }
-
-  return imp;
+    ext,
+  };
 }
 
 function buildDevice() {
@@ -112,10 +132,7 @@ function buildDevice() {
     w: window.innerWidth,
     h: window.innerHeight,
     js: true,
-    ext: {
-      localStorage: storage.localStorageIsEnabled(),
-      cookies: storage.cookiesAreEnabled(),
-    },
+    ext: {},
   };
 
   if (typeof deviceConfig === 'object') {
@@ -139,11 +156,9 @@ function buildRegs(bidderRequest) {
 }
 
 function buildUser(bid) {
-  const userId = getUserId() || generateUUID();
+  const userId = getUserId();
   const yob = deepAccess(bid, 'params.user.yob')
   const gender = deepAccess(bid, 'params.user.gender')
-
-  setUserId(userId);
 
   return {
     id: userId,
@@ -179,10 +194,9 @@ function buildRequest(validBidRequests, bidderRequest) {
       tid: bidderRequest.auctionId,
     },
     site: {
-      // TODO: are these the right refererInfo values?
-      domain: bidderRequest.refererInfo.domain,
-      page: bidderRequest.refererInfo.page,
-      ref: bidderRequest.refererInfo.ref,
+      domain: location.hostname,
+      page: location.href,
+      ref: bidderRequest.refererInfo.referer,
     },
     device: buildDevice(),
     regs: buildRegs(bidderRequest),
@@ -270,96 +284,40 @@ function validateSizes(sizes) {
   );
 }
 
-function validateAdUnitId(bid) {
-  if (!bid.params.adUnitId) {
-    logError('insticator: missing adUnitId bid parameter');
-    return false;
-  }
-
-  return true;
-}
-
-function validateMediaType(bid) {
-  if (!(BANNER in bid.mediaTypes || VIDEO in bid.mediaTypes)) {
-    logError('insticator: expected banner or video in mediaTypes');
-    return false;
-  }
-
-  return true;
-}
-
-function validateBanner(bid) {
-  const banner = deepAccess(bid, 'mediaTypes.banner');
-
-  if (banner === undefined) {
-    return true;
-  }
-
-  if (
-    !validateSizes(bid.sizes) &&
-    !validateSizes(bid.mediaTypes.banner.sizes)
-  ) {
-    logError('insticator: banner sizes not specified or invalid');
-    return false;
-  }
-
-  return true;
-}
-
-function validateVideo(bid) {
-  const video = deepAccess(bid, 'mediaTypes.video');
-
-  if (video === undefined) {
-    return true;
-  }
-
-  const videoSize = [
-    deepAccess(bid, 'mediaTypes.video.w'),
-    deepAccess(bid, 'mediaTypes.video.h'),
-  ];
-
-  if (
-    !validateSize(videoSize)
-  ) {
-    logError('insticator: video size not specified or invalid');
-    return false;
-  }
-
-  const mimes = deepAccess(bid, 'mediaTypes.video.mimes');
-
-  if (!Array.isArray(mimes) || mimes.length === 0) {
-    logError('insticator: mimes not specified');
-    return false;
-  }
-
-  const placement = deepAccess(bid, 'mediaTypes.video.placement');
-
-  if (typeof placement !== 'undefined' && typeof placement !== 'number') {
-    logError('insticator: video placement is not a number');
-    return false;
-  }
-
-  return true;
-}
-
 export const spec = {
   code: BIDDER_CODE,
   gvlid: GVLID,
-  supportedMediaTypes: [ BANNER, VIDEO ],
+  supportedMediaTypes: [BANNER],
 
   isBidRequestValid: function (bid) {
-    return (
-      validateAdUnitId(bid) &&
-      validateMediaType(bid) &&
-      validateBanner(bid) &&
-      validateVideo(bid)
-    );
+    if (!bid.params.adUnitId) {
+      logError('insticator: missing adUnitId bid parameter');
+      return false;
+    }
+
+    if (!(BANNER in bid.mediaTypes)) {
+      logError('insticator: expected banner in mediaTypes');
+      return false;
+    }
+
+    if (
+      !validateSizes(bid.sizes) &&
+      !validateSizes(bid.mediaTypes.banner.sizes)
+    ) {
+      logError('insticator: banner sizes not specified or invalid');
+      return false;
+    }
+
+    return true;
   },
 
   buildRequests: function (validBidRequests, bidderRequest) {
     const requests = [];
     let endpointUrl = config.getConfig('insticator.endpointUrl') || ENDPOINT;
-    endpointUrl = endpointUrl.replace(/^http:/, 'https:');
+
+    if (endpointUrl.indexOf('localhost') === -1) {
+      endpointUrl = endpointUrl.replace(/^http:/, 'https:');
+    }
 
     if (validBidRequests.length > 0) {
       requests.push({
