@@ -28,8 +28,7 @@
     "header bidding",
     "prebid"
   ],
-  "globalVarName": "pbjs",
-  "defineGlobal": true,
+  "globalVarName": "instBid",
   "author": "the prebid.js contributors",
   "license": "Apache-2.0",
   "engines": {
