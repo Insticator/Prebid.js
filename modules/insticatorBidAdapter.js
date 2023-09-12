@@ -235,7 +235,7 @@ function buildRequest(validBidRequests, bidderRequest) {
   return req;
 }
 
-function buildBid(bid, bidderRequest) {
+function buildBid(bid, bidderRequest, seat) {
   const originalBid = find(bidderRequest.bids, (b) => b.bidId === bid.impid);
   let meta = {}
 
@@ -245,6 +245,10 @@ function buildBid(bid, bidderRequest) {
 
   if (bid.adomain) {
     meta.advertiserDomains = bid.adomain
+  }
+
+  if (seat) {
+    meta.seat = seat
   }
 
   return {
@@ -264,7 +268,7 @@ function buildBid(bid, bidderRequest) {
 }
 
 function buildBidSet(seatbid, bidderRequest) {
-  return seatbid.bid.map((bid) => buildBid(bid, bidderRequest));
+  return seatbid.bid.map((bid) => buildBid(bid, bidderRequest, seatbid.seat));
 }
 
 function validateSize(size) {
