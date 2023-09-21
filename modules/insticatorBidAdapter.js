@@ -246,9 +246,10 @@ function buildBid(bid, bidderRequest, seat) {
   if (bid.adomain) {
     meta.advertiserDomains = bid.adomain
   }
-
-  if (seat) {
-    meta.seat = seat
+  // seatbid.seat = `${bidRequesterId}_${seatbid.seat || ''}`;
+  if (seat && typeof seat === 'string') {
+    const bidderId = seat.split('_')[0]
+    meta.seat = bidderId
   }
 
   return {
