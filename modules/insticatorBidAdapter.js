@@ -87,10 +87,10 @@ function buildBanner(bidRequest) {
 }
 
 function buildVideo(bidRequest) {
-  const w = deepAccess(bidRequest, 'mediaTypes.video.w');
-  const h = deepAccess(bidRequest, 'mediaTypes.video.h');
-  const mimes = deepAccess(bidRequest, 'mediaTypes.video.mimes');
-  const placement = deepAccess(bidRequest, 'mediaTypes.video.placement') || 3;
+  const w = deepAccess(bidRequest, 'params.video.w');
+  const h = deepAccess(bidRequest, 'params.video.h');
+  const mimes = deepAccess(bidRequest, 'params.video.mimes');
+  const placement = deepAccess(bidRequest, 'params.video.placement') || 3;
 
   return {
     placement,
@@ -120,7 +120,7 @@ function buildImpression(bidRequest) {
     imp.banner = buildBanner(bidRequest);
   }
 
-  if (deepAccess(bidRequest, 'mediaTypes.video')) {
+  if (deepAccess(bidRequest, 'params.video')) {
     imp.video = buildVideo(bidRequest);
   }
 
@@ -319,15 +319,15 @@ function validateBanner(bid) {
 }
 
 function validateVideo(bid) {
-  const video = deepAccess(bid, 'mediaTypes.video');
+  const video = deepAccess(bid, 'params.video');
 
   if (video === undefined) {
     return true;
   }
 
   const videoSize = [
-    deepAccess(bid, 'mediaTypes.video.w'),
-    deepAccess(bid, 'mediaTypes.video.h'),
+    deepAccess(bid, 'params.video.w'),
+    deepAccess(bid, 'params.video.h'),
   ];
 
   if (
@@ -337,14 +337,14 @@ function validateVideo(bid) {
     return false;
   }
 
-  const mimes = deepAccess(bid, 'mediaTypes.video.mimes');
+  const mimes = deepAccess(bid, 'params.video.mimes');
 
   if (!Array.isArray(mimes) || mimes.length === 0) {
     logError('insticator: mimes not specified');
     return false;
   }
 
-  const placement = deepAccess(bid, 'mediaTypes.video.placement');
+  const placement = deepAccess(bid, 'params.video.placement');
 
   if (typeof placement !== 'undefined' && typeof placement !== 'number') {
     logError('insticator: video placement is not a number');
