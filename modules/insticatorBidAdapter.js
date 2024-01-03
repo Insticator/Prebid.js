@@ -87,17 +87,40 @@ function buildBanner(bidRequest) {
 }
 
 function buildVideo(bidRequest) {
-  const w = deepAccess(bidRequest, 'mediaTypes.video.w');
-  const h = deepAccess(bidRequest, 'mediaTypes.video.h');
+  let w = deepAccess(bidRequest, 'mediaTypes.video.w') || undefined;
+  let h = deepAccess(bidRequest, 'mediaTypes.video.h') || undefined;
   const mimes = deepAccess(bidRequest, 'mediaTypes.video.mimes');
   const placement = deepAccess(bidRequest, 'mediaTypes.video.placement') || 3;
+  const plcmt = deepAccess(bidRequest, 'mediaTypes.video.plcmt') || undefined;
+  const playerSize = deepAccess(bidRequest, 'mediaTypes.video.playerSize');
 
-  return {
+  if (!w) {
+    if (Array.isArray(playerSize)) {
+      w = parseInt(playerSize[0][0], 10);
+    } else if (typeof playerSize[0] === 'number' && !isNaN(playerSize[0])) {
+      w = parseInt(playerSize[0], 10);
+    }
+  }
+  if (!h) {
+    if (Array.isArray(playerSize)) {
+      h = parseInt(playerSize[0][1], 10);
+    } else if (typeof playerSize[1] === 'number' && !isNaN(playerSize[1])) {
+      h = parseInt(playerSize[1], 10);
+    }
+  }
+  let videoObj = {
     placement,
     mimes,
     w,
     h,
   }
+  if (plcmt) {
+    videoObj = {
+      ...videoObj,
+      plcmt
+    }
+  }
+  return videoObj
 }
 
 function buildImpression(bidRequest) {
@@ -110,10 +133,10 @@ function buildImpression(bidRequest) {
       gpid: deepAccess(bidRequest, 'ortb2Imp.ext.gpid'),
       insticator: {
         adUnitId: bidRequest.params.adUnitId,
-        adUnitName: bidRequest.params.adUnitName
-      },
-      impressionType: bidRequest.params.impressionType
-    },
+        adUnitName: bidRequest.params.adUnitName,
+        impressionType: bidRequest.params.impressionType,
+      }
+    }
   }
 
   if (deepAccess(bidRequest, 'mediaTypes.banner')) {
