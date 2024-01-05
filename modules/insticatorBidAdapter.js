@@ -268,7 +268,7 @@ function buildBid(bid, bidderRequest) {
     meta.advertiserDomains = bid.adomain
   }
 
-  return {
+  const bidResponse = {
     requestId: bid.impid,
     creativeId: bid.crid,
     cpm: bid.price,
@@ -282,6 +282,13 @@ function buildBid(bid, bidderRequest) {
     adUnitCode: originalBid.adUnitCode,
     ...(Object.keys(meta).length > 0 ? {meta} : {})
   };
+
+  if (originalBid.mediaTypes.video) {
+    bidResponse.mediaType = 'video';
+    bidResponse.vastXml = bid.adm;
+  }
+
+  return bidResponse;
 }
 
 function buildBidSet(seatbid, bidderRequest) {
