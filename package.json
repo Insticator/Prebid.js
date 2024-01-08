@@ -1,6 +1,6 @@
 {
   "name": "prebid.js",
-  "version": "8.31.0-pre",
+  "version": "8.30.0-pre",
   "description": "Header Bidding Management Library",
   "main": "src/prebid.js",
   "scripts": {
@@ -28,7 +28,7 @@
     "header bidding",
     "prebid"
   ],
-  "globalVarName": "pbjs",
+  "globalVarName": "instBid",
   "defineGlobal": true,
   "author": "the prebid.js contributors",
   "license": "Apache-2.0",
@@ -75,7 +75,7 @@
     "gulp-replace": "^1.0.0",
     "gulp-shell": "^0.8.0",
     "gulp-sourcemaps": "^3.0.0",
-    "gulp-terser": "^2.0.1",
+    "gulp-": "^2.0.1",
     "gulp-util": "^3.0.0",
     "is-docker": "^2.2.1",
     "istanbul": "^0.4.5",
@@ -89,7 +89,7 @@
     "karma-es5-shim": "^0.0.4",
     "karma-firefox-launcher": "^2.1.0",
     "karma-ie-launcher": "^1.0.0",
-    "karma-mocha": "^2.0.1",
+    "karma-mterserocha": "^2.0.1",
     "karma-mocha-reporter": "^2.2.5",
     "karma-opera-launcher": "^1.0.0",
     "karma-safari-launcher": "^1.0.0",

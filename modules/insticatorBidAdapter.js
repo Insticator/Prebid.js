@@ -258,7 +258,14 @@ function buildBid(bid, bidderRequest) {
     meta.advertiserDomains = bid.adomain
   }
 
-  return {
+  let mediaType = 'banner';
+  console.log(deepAccess(bidderRequest, 'mediaTypes.video'), "deep")
+  if (bid.adm && bid.adm.includes('<VAST')) {
+    mediaType = 'video';
+  }
+  console.log("bidderRequest: ", bidderRequest, " originalBid: ", originalBid)
+  console.log('bid: ', bid, "  mediaType: ", mediaType) 
+  let bidResponse = {
     requestId: bid.impid,
     creativeId: bid.crid,
     cpm: bid.price,
@@ -267,11 +274,28 @@ function buildBid(bid, bidderRequest) {
     ttl: bid.exp || config.getConfig('insticator.bidTTL') || BID_TTL,
     width: bid.w,
     height: bid.h,
-    mediaType: 'banner',
+    mediaType: mediaType,
     ad: bid.adm,
     adUnitCode: originalBid.adUnitCode,
     ...(Object.keys(meta).length > 0 ? {meta} : {})
   };
+  
+  if (mediaType === 'video') {
+    bidResponse.vastXml = bid.adm;
+  }
+  console.log('bidResponse: ', bidResponse)
+  if (bidResponse.mediaType === 'video') {
+    const vastType = deepAccess(bid, 'ext.ttx.vastType', 'xml');
+
+    if (vastType === 'xml') {
+      bidResponse.vastXml = bidResponse.ad;
+    } else {
+      bidResponse.vastUrl = bidResponse.ad;
+    }
+  }
+  console.log('Final bidResponse: ', bidResponse)
+
+  return bidResponse;
 }
 
 function buildBidSet(seatbid, bidderRequest) {
@@ -397,6 +421,10 @@ export const spec = {
   supportedMediaTypes: [ BANNER, VIDEO ],
 
   isBidRequestValid: function (bid) {
+    console.log(validateVideo(bid), "VALIDATE VIDEO", validateAdUnitId(bid) &&
+    validateMediaType(bid) &&
+    validateBanner(bid) &&
+    validateVideo(bid))
     return (
       validateAdUnitId(bid) &&
       validateMediaType(bid) &&
@@ -442,8 +470,9 @@ export const spec = {
     const bidsets = body.seatbid.map((seatbid) =>
       buildBidSet(seatbid, bidderRequest)
     );
-
-    return bidsets.reduce((a, b) => a.concat(b), []);
+    const bids = bidsets.reduce((a, b) => a.concat(b), []);
+    console.log('BIDSETs: ', bids)
+    return bids;
   },
 
   getUserSyncs: function (options, responses) {
