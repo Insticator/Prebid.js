@@ -553,6 +553,13 @@ function validateBanner(bid) {
     return false;
   }
 
+  const el = grabElementById(bid.adUnitCode);
+
+  if (!el || !elementIsViewable(el)) {
+    logError('insticator: placement not viewable');
+    return false;
+  }
+
   return true;
 }
 
@@ -633,6 +640,81 @@ function parsePlayerSizeToWidthHeight(playerSize, w, h) {
   }
 
   return { w, h };
+}
+
+function grabElementById(
+  divId
+) {
+  let targetDiv = document.getElementById(divId)
+
+  if (!targetDiv) {
+    const shadowRootClassNames = ['instiengage-core-commenting',
+      'instiengage-trending-now'
+    ]
+
+    // could be shadow dom
+    for (const className of shadowRootClassNames) {
+      try {
+        const shadowRoot =
+          document.getElementsByClassName(className)[0].shadowRoot
+        if (shadowRoot) {
+          targetDiv = shadowRoot.getElementById(divId)
+          if (targetDiv) break
+        }
+      } catch (e) {
+        // do nothing
+      }
+    }
+  }
+
+  return targetDiv
+}
+
+function getViewability($element, isVertical) {
+  // If the element doesn't exist or the browser doesn't support getBoundingClientRect, return 0.
+  if (!$element || !$element.getBoundingClientRect) return 0
+  const windowSize = window[isVertical ? 'innerHeight' : 'innerWidth']
+  const elemUpper =
+    $element.getBoundingClientRect()[isVertical ? 'top' : 'left']
+  const elemLower =
+    $element.getBoundingClientRect()[isVertical ? 'bottom' : 'right']
+  const elemSize = elemLower - elemUpper
+  if (elemUpper > windowSize) {
+    // Not viewable, below (or to the right of) viewport
+    return 0
+  } else if (elemLower <= 0) {
+    // Not viewable, above (or to the left of) the viewport
+    return 0
+  } else if (elemUpper >= 0 && elemLower <= windowSize) {
+    // Element is completely visible
+    return 1
+  } else if (elemUpper < 0 && elemLower > windowSize) {
+    // Top / bottom (or left / right) of element truncated
+    return windowSize / elemSize
+  } else if (elemUpper < 0 && elemLower <= windowSize) {
+    // Top (or left) of element is truncated
+    return elemLower / elemSize
+  } else if (elemUpper >= 0 && elemLower > windowSize) {
+    // Bottom (or right) of element is truncated
+    return (windowSize - elemUpper) / elemSize
+  }
+  // Catch-all error
+  return 0
+}
+
+function elementIsViewable($element)  {
+  // This bugs out if checking within an iframe, so loop up to the top & check the parent iframe
+  if (window.frameElement) {
+    let iframe = window
+    while (iframe.parent.frameElement) {
+      iframe = iframe.parent
+    }
+    // @ts-ignore
+    $element = iframe.frameElement
+  }
+  return (
+    getViewability($element, true) * getViewability($element, false) > 0.5
+  )
 }
 
 export const spec = {
