@@ -553,7 +553,7 @@ function validateBanner(bid) {
     return false;
   }
 
-  const el = document.getElementById(bid.adUnitCode);
+  const el = grabElementById(bid.adUnitCode);
 
   if (!el || !elementIsViewable(el)) {
     logError('insticator: placement not viewable');
@@ -640,6 +640,34 @@ function parsePlayerSizeToWidthHeight(playerSize, w, h) {
   }
 
   return { w, h };
+}
+
+function grabElementById(
+  divId
+) {
+  let targetDiv = document.getElementById(divId)
+
+  if (!targetDiv) {
+    const shadowRootClassNames = ['instiengage-core-commenting',
+      'instiengage-trending-now'
+    ]
+
+    // could be shadow dom
+    for (const className of shadowRootClassNames) {
+      try {
+        const shadowRoot =
+          document.getElementsByClassName(className)[0].shadowRoot
+        if (shadowRoot) {
+          targetDiv = shadowRoot.getElementById(divId)
+          if (targetDiv) break
+        }
+      } catch (e) {
+        // do nothing
+      }
+    }
+  }
+
+  return targetDiv
 }
 
 function getViewability($element, isVertical) {
