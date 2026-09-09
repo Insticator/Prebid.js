@@ -40,14 +40,13 @@ export const OPTIONAL_VIDEO_PARAMS = {
   'rqddurs': (value) => isArrayOfNums(value) && value.every(v => v > 0),
 };
 
-// Mirrors ORTB_AUDIO_PARAMS in src/audio.ts — the fields Prebid core types on
-// mediaTypes.audio. Kept in step deliberately: anything outside that list cannot be set
-// by a publisher, so validating it here would imply support that does not exist.
 export const OPTIONAL_AUDIO_PARAMS = {
   'minduration': (value) => isInteger(value),
   'maxduration': (value) => isInteger(value),
+  'rqddurs': (value) => isArrayOfNums(value) && value.every((duration) => duration > 0),
   'protocols': (value) => isArrayOfNums(value),
   'startdelay': (value) => isInteger(value),
+  'sequence': (value) => isInteger(value),
   'battr': (value) => isArrayOfNums(value),
   'maxextended': (value) => isInteger(value),
   'minbitrate': (value) => isInteger(value),
@@ -55,11 +54,6 @@ export const OPTIONAL_AUDIO_PARAMS = {
   'delivery': (value) => isArrayOfNums(value),
   'api': (value) => isArrayOfNums(value),
   'companiontype': (value) => isArrayOfNums(value),
-  // Audio pods. Prebid core types these on mediaTypes.audio (ORTB_AUDIO_PARAMS in
-  // src/audio.ts), so a publisher can set them.
-  'maxseq': (value) => isInteger(value) && value > 0,
-  'poddur': (value) => isInteger(value) && value > 0,
-  // Audio-only fields.
   'feed': (value) => isInteger(value) && [1, 2, 3, 4, 5, 6, 7].includes(value),
   'stitched': (value) => isInteger(value) && [0, 1].includes(value),
   'nvol': (value) => isInteger(value) && [0, 1, 2, 3, 4].includes(value),
@@ -201,8 +195,6 @@ function buildAudio(bidRequest) {
     if (bidRequestAudio[param] != null && OPTIONAL_AUDIO_PARAMS[param](bidRequestAudio[param])) {
       optionalParams[param] = bidRequestAudio[param];
     }
-    // Bidder overrides go through the same whitelist and validation, and are
-    // copied rather than deleted in place so params.audio is left untouched.
     if (audioBidderParams[param] != null && OPTIONAL_AUDIO_PARAMS[param](audioBidderParams[param])) {
       audioParamOverrides[param] = audioBidderParams[param];
     }
@@ -212,8 +204,6 @@ function buildAudio(bidRequest) {
     optionalParams['context'] = context;
   }
 
-  // mimes sits outside the optional map because it is the one field the Audio
-  // object requires, but it is still dropped when malformed.
   const overrideMimes = audioBidderParams.mimes;
   const resolvedMimes = isValidAudioMimes(overrideMimes)
     ? overrideMimes
@@ -222,7 +212,7 @@ function buildAudio(bidRequest) {
   const audioObj = {
     ...(resolvedMimes !== undefined ? { mimes: resolvedMimes } : {}),
     ...optionalParams,
-    ...audioParamOverrides // bidder specific overrides for audio
+    ...audioParamOverrides
   };
 
   return audioObj;
@@ -242,17 +232,11 @@ function buildImpression(bidRequest) {
     },
   };
 
-  // Only ext.gpid was forwarded, so the exchange's placement fallbacks -- pbadslot, then
-  // adserver.adslot -- could never fire. Forwarded whole rather than field by field, as
-  // ortbConverter does for every adapter built on it: a field the exchange starts reading
-  // then needs no adapter change.
   const impFirstPartyData = deepAccess(bidRequest, 'ortb2Imp.ext.data');
   if (impFirstPartyData && Object.keys(impFirstPartyData).length > 0) {
     deepSetValue(imp, 'ext.data', impFirstPartyData);
   }
 
-  // Core redacts tid when the transmitTid activity is denied, and does so before an
-  // adapter runs -- so whatever survives here is what core intends the bidder to see.
   const transactionId = deepAccess(bidRequest, 'ortb2Imp.ext.tid');
   if (transactionId) {
     deepSetValue(imp, 'ext.tid', transactionId);
@@ -544,16 +528,12 @@ function buildRequest(validBidRequests, bidderRequest) {
   return req;
 }
 
-// btoa throws on any code point above Latin-1, which a localized creative routinely
-// carries. Encoding to UTF-8 bytes first stops one bid from costing the whole response,
-// which bidderFactory discards wholesale when interpretResponse throws.
 const FROM_CHAR_CODE_CHUNK = 0x8000;
 
 function vastXmlToDataUri(vastXml) {
   const utf8Bytes = new TextEncoder().encode(vastXml.replace(/\\"/g, '"'));
   let latin1 = '';
   for (let offset = 0; offset < utf8Bytes.length; offset += FROM_CHAR_CODE_CHUNK) {
-    // Chunked: a large creative would otherwise exceed the argument limit of apply.
     latin1 += String.fromCharCode.apply(null, utf8Bytes.subarray(offset, offset + FROM_CHAR_CODE_CHUNK));
   }
   return 'data:text/xml;charset=utf-8;base64,' + window.btoa(latin1);
@@ -598,22 +578,14 @@ function buildBid(bid, bidderRequest, seatbid) {
     mediaType = 'video';
   } else if (bid.mtype === 1) {
     mediaType = 'banner';
-  // Coerced because mtype crosses the wire as JSON and a string "3" is rejected by
-  // nothing upstream; on a multi-format unit the fallback below would call it video.
   } else if (Number(bid.mtype) === 3) {
     mediaType = 'audio';
-  // 2. Fall back to content detection (case-insensitive). Checked after mtype because an
-  // audio creative is VAST too, so markup alone cannot separate audio from video. Use the
-  // media types the ad unit actually declared to break the tie — labelling an audio-only
-  // unit 'video' makes core reject the bid outright.
+  // 2. Fall back to content detection (case-insensitive)
   } else if (bid.adm && bid.adm.toLowerCase().includes('<vast') && !bid.adm.toLowerCase().includes('<script')) {
     const declaredMediaTypes = originalBid?.mediaTypes || {};
     mediaType = declaredMediaTypes.audio && !declaredMediaTypes.video ? 'audio' : 'video';
   }
 
-  // bidResponseFilter rejects a bid outright when meta.mediaType is absent -- its
-  // mediaTypes.blockUnknown defaults to true and is not gated behind enforce -- so the
-  // resolved media type is mirrored onto meta rather than left for the publisher to infer.
   meta.mediaType = mediaType;
 
   // TTL: Use bid.exp as upper bound if provided, otherwise use configTTL
@@ -627,15 +599,11 @@ function buildBid(bid, bidderRequest, seatbid) {
     currency: 'USD',
     netRevenue: true,
     ttl: ttl,
-    // Omitted rather than sent as undefined: the Audio object carries no size,
-    // and undefined would overwrite core's 0/0 defaults and reach the ad server
-    // as hb_size=undefinedxundefined.
     ...(bid.w != null ? { width: bid.w } : {}),
     ...(bid.h != null ? { height: bid.h } : {}),
     mediaType: mediaType,
     ad: bid.adm,
     adUnitCode: originalBid?.adUnitCode,
-    // Always present now that mediaType is mirrored onto it.
     meta
   };
 
@@ -671,8 +639,7 @@ function buildBid(bid, bidderRequest, seatbid) {
     }
   }
 
-  // Video and audio bids both return `vastXml`; derive a vastUrl from it so a
-  // player has something to load without a cache round-trip.
+  // Inticator bid adaptor only returns `vastXml` for video bids. No VastUrl or videoCache.
   if (!bidResponse.vastUrl && bidResponse.vastXml) {
     bidResponse.vastUrl = 'data:text/xml;charset=utf-8;base64,' + window.btoa(bidResponse.vastXml.replace(/\\"/g, '"'));
   }
@@ -809,15 +776,13 @@ function validateAudio(bid) {
   const audioBidderParams = deepAccess(bid, 'params.audio');
   const audio = {
     ...audioParams,
-    ...audioBidderParams // bidder specific overrides for audio
+    ...audioBidderParams
   };
 
   if (audioParams === undefined) {
     return true;
   }
 
-  // mimes is not required: the exchange defaults it, so an omitted list must not cost
-  // the impression. Invalid optional params are logged and dropped, not rejected.
   for (const param in OPTIONAL_AUDIO_PARAMS) {
     if (audio[param]) {
       if (!OPTIONAL_AUDIO_PARAMS[param](audio[param])) {
@@ -826,8 +791,6 @@ function validateAudio(bid) {
     }
   }
 
-  // Compared as integers: a publisher that stringifies its config would otherwise hit a
-  // lexicographic comparison, where '5' > '30', and lose the impression outright.
   if (isInteger(audio.minduration) && isInteger(audio.maxduration) && audio.minduration > audio.maxduration) {
     logError('insticator: audio minduration is greater than maxduration');
     return false;

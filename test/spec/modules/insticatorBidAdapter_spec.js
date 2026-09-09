@@ -1818,8 +1818,6 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(spec.isBidRequestValid(bid)).to.be.true;
     });
 
-    // '5' > '30' is true lexicographically, so comparing unparsed config would reject a
-    // publisher whose CMS stringifies numbers.
     it('does not read stringified durations as inverted', function () {
       const bid = { ...audioBidRequest, mediaTypes: { audio: { mimes: ['audio/mp4'], minduration: '5', maxduration: '30' } } };
       expect(spec.isBidRequestValid(bid)).to.be.true;
@@ -1834,8 +1832,6 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(spec.isBidRequestValid({ ...audioBidRequest, mediaTypes: {} })).to.be.false;
     });
 
-    // An unusable optional param costs that field, not the impression: it is logged and
-    // dropped while the bid stays valid.
     it('logs an invalid optional audio param but still accepts the bid', function () {
       const logErrorStub = sinon.stub(utils, 'logError');
       try {
@@ -1937,10 +1933,8 @@ describe('InsticatorBidAdapter — audio', function () {
       const bid = { ...audioBidRequest, params };
       const imp = firstImp(bid);
       expect(imp.audio.minduration).to.equal(10);
-      // the out-of-range override is ignored, leaving the ad unit's own value
       expect(imp.audio.feed).to.not.equal(99);
       expect(imp.audio.feed).to.equal(audioBidRequest.mediaTypes.audio.feed);
-      // and it is dropped from the request, not deleted from the caller's bid
       expect(params.audio.feed).to.equal(99);
     });
 
@@ -1964,8 +1958,8 @@ describe('InsticatorBidAdapter — audio', function () {
             protocols: [2, 3, 5, 6],
             battr: [13, 14],
             maxextended: 30,
-            maxseq: 4,
-            poddur: 120,
+            rqddurs: [15, 30],
+            sequence: 2,
           },
         },
       };
@@ -1973,20 +1967,17 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(imp.audio.protocols).to.deep.equal([2, 3, 5, 6]);
       expect(imp.audio.battr).to.deep.equal([13, 14]);
       expect(imp.audio.maxextended).to.equal(30);
-      expect(imp.audio.maxseq).to.equal(4);
-      expect(imp.audio.poddur).to.equal(120);
+      expect(imp.audio.rqddurs).to.deep.equal([15, 30]);
+      expect(imp.audio.sequence).to.equal(2);
     });
 
-    // maxseq/poddur describe a pod, so zero or negative is meaningless rather than merely
-    // out of range: the request is better off without them than carrying a nonsense pod.
-    it('drops pod params that are not positive integers', function () {
+    it('drops rqddurs when any duration is not positive', function () {
       const bid = {
         ...audioBidRequest,
-        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, maxseq: 0, poddur: -1 } },
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, rqddurs: [15, 0, -5] } },
       };
       const imp = firstImp(bid);
-      expect(imp.audio.maxseq).to.not.exist;
-      expect(imp.audio.poddur).to.not.exist;
+      expect(imp.audio.rqddurs).to.not.exist;
     });
 
     it('drops protocols, battr and maxextended when malformed', function () {
@@ -2030,7 +2021,6 @@ describe('InsticatorBidAdapter — audio', function () {
     const vast = '<VAST version="4.1"><Ad id="1"><InLine></InLine></Ad></VAST>';
 
     function respond(bid) {
-      // body.id must equal bidderRequestId or interpretResponse discards the response.
       return spec.interpretResponse({ body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [bid] }] } }, request);
     }
 
@@ -2044,16 +2034,11 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(response.vastXml).to.equal(vast);
     });
 
-    // Regression guard: audio creatives are VAST, so mtype must be consulted before the
-    // markup sniff or every audio bid would be reported as video.
     it('still reports mtype 2 as video', function () {
       const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 2 });
       expect(response.mediaType).to.equal('video');
     });
 
-    // Without mtype the markup alone cannot separate audio from video, so the media
-    // types the ad unit declared break the tie. Reporting 'video' on an audio-only unit
-    // makes core reject the bid, which is worse than a mislabel.
     it('uses the declared media types when VAST arrives with no mtype', function () {
       const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast });
       expect(response.mediaType).to.equal('audio');
@@ -2077,8 +2062,6 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(response.mediaType).to.equal('video');
     });
 
-    // An audio bid carries no size. Sending width/height as undefined overwrites the
-    // 0/0 core assigns and surfaces as hb_size=undefinedxundefined at the ad server.
     it('omits width and height when the bid carries no size', function () {
       const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 });
       expect(response).to.not.have.property('width');
@@ -2091,8 +2074,6 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(response.height).to.equal(250);
     });
 
-    // bidResponseFilter rejects a bid whose meta.mediaType is absent: its
-    // mediaTypes.blockUnknown defaults to true and is not gated behind enforce.
     it('mirrors the media type onto meta so bidResponseFilter cannot reject it', function () {
       const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 });
       expect(response.meta.mediaType).to.equal('audio');
@@ -2103,7 +2084,6 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(response.vastUrl).to.be.a('string').and.to.contain('data:text/xml');
     });
 
-    // mtype crosses the wire as JSON, and nothing upstream rejects a string.
     it('maps a string mtype "3" to audio on a multi-format unit', function () {
       const multiFormat = {
         bidderRequest: {
@@ -2122,8 +2102,6 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(response.mediaType).to.equal('audio');
     });
 
-    // btoa rejects any code point above Latin-1. Losing this bid would lose every bid in
-    // the response, because bidderFactory discards the lot when interpretResponse throws.
     it('encodes a creative carrying characters outside Latin-1', function () {
       const localisedVast = '<VAST version="4.1"><Ad><InLine><AdTitle>Caf\u00e9 \u2014 Gr\u00fc\u00dfe \u201cx\u201d \u65e5\u672c</AdTitle></InLine></Ad></VAST>';
       const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: localisedVast, mtype: 3 });
@@ -2133,8 +2111,6 @@ describe('InsticatorBidAdapter — audio', function () {
   });
 });
 
-// The exchange resolves a placement from ext.gpid, then ext.data.pbadslot, then
-// ext.data.adserver.adslot. Only gpid was forwarded, so the fallbacks never fired.
 describe('InsticatorBidAdapter — placement identifiers', function () {
   const baseBid = {
     bidder: 'insticator',
@@ -2173,8 +2149,6 @@ describe('InsticatorBidAdapter — placement identifiers', function () {
     expect(imp.ext.data.adserver.adslot).to.equal('/1111/slot');
   });
 
-  // The point of forwarding the object whole: a key the exchange has not been taught
-  // about yet still arrives, with no adapter change.
   it('forwards first-party data keys beyond the slot fields', function () {
     const imp = firstImp({
       ...baseBid,
@@ -2189,14 +2163,11 @@ describe('InsticatorBidAdapter — placement identifiers', function () {
     expect(imp.ext.tid).to.equal('tid-abc-123');
   });
 
-  // Core strips tid when the transmitTid activity is denied; an absent value must not
-  // reappear as an empty key.
   it('omits ext.tid when core has redacted it', function () {
     const imp = firstImp({ ...baseBid, ortb2Imp: { ext: { gpid: '/1111/homepage#1' } } });
     expect(imp.ext).to.not.have.property('tid');
   });
 
-  // An empty ext.data would reach the exchange as a bare object on every request.
   it('leaves ext.data absent when the publisher sets neither', function () {
     const imp = firstImp({ ...baseBid, ortb2Imp: { ext: { gpid: '/1111/homepage#1' } } });
     expect(imp.ext).to.not.have.property('data');
