@@ -1772,3 +1772,428 @@ describe('InsticatorBidAdapter', function () {
     });
   });
 });
+
+describe('InsticatorBidAdapter — audio', function () {
+  const audioBidRequest = {
+    bidder: 'insticator',
+    adUnitCode: 'audio-adunit',
+    params: { adUnitId: '1a2b3c4d5e6f1a2b3c4d' },
+    mediaTypes: {
+      audio: {
+        mimes: ['audio/mp4', 'audio/mpeg'],
+        minduration: 5,
+        maxduration: 30,
+        startdelay: 0,
+        api: [2, 7],
+        delivery: [1, 2],
+        minbitrate: 32,
+        maxbitrate: 320,
+        companiontype: [1, 2],
+        feed: 3,
+        stitched: 1,
+        nvol: 2,
+      },
+    },
+    bidId: 'audio-bid-1',
+  };
+
+  describe('supportedMediaTypes', function () {
+    it('includes audio alongside banner and video', function () {
+      expect(spec.supportedMediaTypes).to.include('audio');
+      expect(spec.supportedMediaTypes).to.include('banner');
+      expect(spec.supportedMediaTypes).to.include('video');
+    });
+  });
+
+  describe('isBidRequestValid', function () {
+    it('accepts an audio-only ad unit', function () {
+      expect(spec.isBidRequestValid(audioBidRequest)).to.be.true;
+    });
+
+    it('accepts audio with no mimes — the exchange defaults them', function () {
+      const bid = { ...audioBidRequest, mediaTypes: { audio: { minduration: 5, maxduration: 30 } } };
+      expect(spec.isBidRequestValid(bid)).to.be.true;
+    });
+
+    // '5' > '30' is true lexicographically, so comparing unparsed config would reject a
+    // publisher whose CMS stringifies numbers.
+    it('does not read stringified durations as inverted', function () {
+      const bid = { ...audioBidRequest, mediaTypes: { audio: { mimes: ['audio/mp4'], minduration: '5', maxduration: '30' } } };
+      expect(spec.isBidRequestValid(bid)).to.be.true;
+    });
+
+    it('rejects audio whose minduration exceeds maxduration', function () {
+      const bid = { ...audioBidRequest, mediaTypes: { audio: { mimes: ['audio/mp4'], minduration: 60, maxduration: 30 } } };
+      expect(spec.isBidRequestValid(bid)).to.be.false;
+    });
+
+    it('still rejects an ad unit with no banner, video or audio', function () {
+      expect(spec.isBidRequestValid({ ...audioBidRequest, mediaTypes: {} })).to.be.false;
+    });
+
+    // An unusable optional param costs that field, not the impression: it is logged and
+    // dropped while the bid stays valid.
+    it('logs an invalid optional audio param but still accepts the bid', function () {
+      const logErrorStub = sinon.stub(utils, 'logError');
+      try {
+        const bid = {
+          ...audioBidRequest,
+          mediaTypes: { audio: { mimes: ['audio/mp4'], protocols: 'not-an-array' } },
+        };
+        expect(spec.isBidRequestValid(bid)).to.be.true;
+        const messages = logErrorStub.getCalls().map((call) => String(call.args[0]));
+        expect(messages.some((message) => message.includes('audio protocols is invalid'))).to.be.true;
+      } finally {
+        logErrorStub.restore();
+      }
+    });
+  });
+
+  describe('buildRequests', function () {
+    let sandbox;
+    let localStorageIsEnabledStub, cookiesAreEnabledStub, getDataFromLocalStorageStub, getCookieStub;
+
+    beforeEach(function () {
+      getGlobal().bidderSettings = { insticator: { storageAllowed: true } };
+      getDataFromLocalStorageStub = sinon.stub(storage, 'getDataFromLocalStorage').returns(USER_ID_DUMMY_VALUE);
+      localStorageIsEnabledStub = sinon.stub(storage, 'localStorageIsEnabled').returns(true);
+      getCookieStub = sinon.stub(storage, 'getCookie').returns(USER_ID_DUMMY_VALUE);
+      cookiesAreEnabledStub = sinon.stub(storage, 'cookiesAreEnabled').returns(true);
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(function () {
+      sandbox.restore();
+      getDataFromLocalStorageStub.restore();
+      localStorageIsEnabledStub.restore();
+      getCookieStub.restore();
+      cookiesAreEnabledStub.restore();
+      getGlobal().bidderSettings = {};
+    });
+
+    function firstImp(bid) {
+      const requests = spec.buildRequests([bid], { bidderRequestId: 'req-1', refererInfo: { page: 'https://example.com' } });
+      return JSON.parse(requests[0].data).imp[0];
+    }
+
+    it('builds imp.audio with mimes and the optional params', function () {
+      const imp = firstImp(audioBidRequest);
+      expect(imp.audio).to.exist;
+      expect(imp.audio.mimes).to.deep.equal(['audio/mp4', 'audio/mpeg']);
+      expect(imp.audio.minduration).to.equal(5);
+      expect(imp.audio.maxduration).to.equal(30);
+      expect(imp.audio.startdelay).to.equal(0);
+      expect(imp.audio.api).to.deep.equal([2, 7]);
+      expect(imp.audio.delivery).to.deep.equal([1, 2]);
+      expect(imp.audio.companiontype).to.deep.equal([1, 2]);
+    });
+
+    it('carries the audio-only fields feed, stitched and nvol', function () {
+      const imp = firstImp(audioBidRequest);
+      expect(imp.audio.feed).to.equal(3);
+      expect(imp.audio.stitched).to.equal(1);
+      expect(imp.audio.nvol).to.equal(2);
+    });
+
+    it('emits no banner or video object for an audio-only ad unit', function () {
+      const imp = firstImp(audioBidRequest);
+      expect(imp.audio).to.exist;
+      expect(imp.banner).to.not.exist;
+      expect(imp.video).to.not.exist;
+    });
+
+    it('drops an out-of-range audio param rather than sending it', function () {
+      const bid = { ...audioBidRequest, mediaTypes: { audio: { mimes: ['audio/mp4'], feed: 99, nvol: 42, stitched: 7 } } };
+      const imp = firstImp(bid);
+      expect(imp.audio.feed).to.not.exist;
+      expect(imp.audio.nvol).to.not.exist;
+      expect(imp.audio.stitched).to.not.exist;
+    });
+
+    it('emits no audio object when the ad unit has none', function () {
+      const bid = { ...audioBidRequest, mediaTypes: { banner: { sizes: [[300, 250]] } } };
+      const imp = firstImp(bid);
+      expect(imp.audio).to.not.exist;
+    });
+
+    it('drops a malformed mimes list rather than sending it', function () {
+      const bid = { ...audioBidRequest, mediaTypes: { audio: { mimes: 'audio/mp4' } } };
+      const imp = firstImp(bid);
+      expect(imp.audio).to.exist;
+      expect(imp.audio.mimes).to.not.exist;
+    });
+
+    it('ignores params.audio keys outside the supported set', function () {
+      const bid = { ...audioBidRequest, params: { ...audioBidRequest.params, audio: { notAnOrtbField: 'nope' } } };
+      const imp = firstImp(bid);
+      expect(imp.audio.notAnOrtbField).to.not.exist;
+    });
+
+    it('applies a valid params.audio override without mutating the bid', function () {
+      const params = { ...audioBidRequest.params, audio: { minduration: 10, feed: 99 } };
+      const bid = { ...audioBidRequest, params };
+      const imp = firstImp(bid);
+      expect(imp.audio.minduration).to.equal(10);
+      // the out-of-range override is ignored, leaving the ad unit's own value
+      expect(imp.audio.feed).to.not.equal(99);
+      expect(imp.audio.feed).to.equal(audioBidRequest.mediaTypes.audio.feed);
+      // and it is dropped from the request, not deleted from the caller's bid
+      expect(params.audio.feed).to.equal(99);
+    });
+
+    it('asks for an audio floor', function () {
+      const seen = [];
+      const bid = {
+        ...audioBidRequest,
+        getFloor: (args) => { seen.push(args); return { currency: 'USD', floor: 1.23 }; },
+      };
+      const imp = firstImp(bid);
+      expect(seen.some((call) => call.mediaType === 'audio')).to.equal(true);
+      expect(imp.bidfloor).to.equal(1.23);
+    });
+
+    it('carries the remaining ORTB audio params', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: {
+          audio: {
+            ...audioBidRequest.mediaTypes.audio,
+            protocols: [2, 3, 5, 6],
+            battr: [13, 14],
+            maxextended: 30,
+            maxseq: 4,
+            poddur: 120,
+          },
+        },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.protocols).to.deep.equal([2, 3, 5, 6]);
+      expect(imp.audio.battr).to.deep.equal([13, 14]);
+      expect(imp.audio.maxextended).to.equal(30);
+      expect(imp.audio.maxseq).to.equal(4);
+      expect(imp.audio.poddur).to.equal(120);
+    });
+
+    // maxseq/poddur describe a pod, so zero or negative is meaningless rather than merely
+    // out of range: the request is better off without them than carrying a nonsense pod.
+    it('drops pod params that are not positive integers', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, maxseq: 0, poddur: -1 } },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.maxseq).to.not.exist;
+      expect(imp.audio.poddur).to.not.exist;
+    });
+
+    it('drops protocols, battr and maxextended when malformed', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: {
+          audio: {
+            ...audioBidRequest.mediaTypes.audio,
+            protocols: 'vast',
+            battr: [{}],
+            maxextended: 'thirty',
+          },
+        },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.protocols).to.not.exist;
+      expect(imp.audio.battr).to.not.exist;
+      expect(imp.audio.maxextended).to.not.exist;
+    });
+
+    it('forwards mediaTypes.audio.context', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, context: 'instream' } },
+      };
+      expect(firstImp(bid).audio.context).to.equal('instream');
+    });
+
+    it('omits context when the ad unit declares none', function () {
+      expect(firstImp(audioBidRequest).audio.context).to.not.exist;
+    });
+  });
+
+  describe('interpretResponse', function () {
+    const request = {
+      bidderRequest: {
+        bidderRequestId: 'req-1',
+        bids: [{ ...audioBidRequest, adUnitCode: 'audio-adunit' }],
+      },
+    };
+    const vast = '<VAST version="4.1"><Ad id="1"><InLine></InLine></Ad></VAST>';
+
+    function respond(bid) {
+      // body.id must equal bidderRequestId or interpretResponse discards the response.
+      return spec.interpretResponse({ body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [bid] }] } }, request);
+    }
+
+    it('maps mtype 3 to the audio media type', function () {
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 });
+      expect(response.mediaType).to.equal('audio');
+    });
+
+    it('exposes an audio creative as vastXml', function () {
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 });
+      expect(response.vastXml).to.equal(vast);
+    });
+
+    // Regression guard: audio creatives are VAST, so mtype must be consulted before the
+    // markup sniff or every audio bid would be reported as video.
+    it('still reports mtype 2 as video', function () {
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 2 });
+      expect(response.mediaType).to.equal('video');
+    });
+
+    // Without mtype the markup alone cannot separate audio from video, so the media
+    // types the ad unit declared break the tie. Reporting 'video' on an audio-only unit
+    // makes core reject the bid, which is worse than a mislabel.
+    it('uses the declared media types when VAST arrives with no mtype', function () {
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast });
+      expect(response.mediaType).to.equal('audio');
+    });
+
+    it('still reports VAST with no mtype as video when the unit declares video', function () {
+      const videoRequest = {
+        bidderRequest: {
+          bidderRequestId: 'req-1',
+          bids: [{
+            ...audioBidRequest,
+            adUnitCode: 'video-adunit',
+            mediaTypes: { video: { context: 'instream', mimes: ['video/mp4'] } },
+          }],
+        },
+      };
+      const [response] = spec.interpretResponse(
+        { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast }] }] } },
+        videoRequest,
+      );
+      expect(response.mediaType).to.equal('video');
+    });
+
+    // An audio bid carries no size. Sending width/height as undefined overwrites the
+    // 0/0 core assigns and surfaces as hb_size=undefinedxundefined at the ad server.
+    it('omits width and height when the bid carries no size', function () {
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 });
+      expect(response).to.not.have.property('width');
+      expect(response).to.not.have.property('height');
+    });
+
+    it('keeps width and height when the bid does carry a size', function () {
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3, w: 300, h: 250 });
+      expect(response.width).to.equal(300);
+      expect(response.height).to.equal(250);
+    });
+
+    it('derives a vastUrl from the audio vastXml', function () {
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 });
+      expect(response.vastUrl).to.be.a('string').and.to.contain('data:text/xml');
+    });
+
+    // mtype crosses the wire as JSON, and nothing upstream rejects a string.
+    it('maps a string mtype "3" to audio on a multi-format unit', function () {
+      const multiFormat = {
+        bidderRequest: {
+          bidderRequestId: 'req-1',
+          bids: [{
+            ...audioBidRequest,
+            adUnitCode: 'audio-adunit',
+            mediaTypes: { audio: { mimes: ['audio/mp4'] }, video: { mimes: ['video/mp4'] } },
+          }],
+        },
+      };
+      const [response] = spec.interpretResponse(
+        { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: '3' }] }] } },
+        multiFormat,
+      );
+      expect(response.mediaType).to.equal('audio');
+    });
+
+    // btoa rejects any code point above Latin-1. Losing this bid would lose every bid in
+    // the response, because bidderFactory discards the lot when interpretResponse throws.
+    it('encodes a creative carrying characters outside Latin-1', function () {
+      const localisedVast = '<VAST version="4.1"><Ad><InLine><AdTitle>Caf\u00e9 \u2014 Gr\u00fc\u00dfe \u201cx\u201d \u65e5\u672c</AdTitle></InLine></Ad></VAST>';
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: localisedVast, mtype: 3 });
+      expect(response.vastUrl).to.be.a('string').and.to.contain('data:text/xml');
+      expect(response.vastXml).to.equal(localisedVast);
+    });
+  });
+});
+
+// The exchange resolves a placement from ext.gpid, then ext.data.pbadslot, then
+// ext.data.adserver.adslot. Only gpid was forwarded, so the fallbacks never fired.
+describe('InsticatorBidAdapter — placement identifiers', function () {
+  const baseBid = {
+    bidder: 'insticator',
+    adUnitCode: 'placement-adunit',
+    bidId: 'placement-bid-1',
+    params: { adUnitId: '1a2b3c4d5e6f1a2b3c4d' },
+    mediaTypes: { banner: { sizes: [[300, 250]] } },
+  };
+
+  function firstImp(bid) {
+    const requests = spec.buildRequests([bid], { bidderRequestId: 'req-1', refererInfo: { page: 'https://example.com' } });
+    return JSON.parse(requests[0].data).imp[0];
+  }
+
+  it('forwards ext.data.pbadslot', function () {
+    const imp = firstImp({ ...baseBid, ortb2Imp: { ext: { data: { pbadslot: '/1111/homepage' } } } });
+    expect(imp.ext.data.pbadslot).to.equal('/1111/homepage');
+  });
+
+  it('forwards ext.data.adserver.adslot and name', function () {
+    const imp = firstImp({
+      ...baseBid,
+      ortb2Imp: { ext: { data: { adserver: { name: 'gam', adslot: '/1111/homepage/leaderboard' } } } },
+    });
+    expect(imp.ext.data.adserver.adslot).to.equal('/1111/homepage/leaderboard');
+    expect(imp.ext.data.adserver.name).to.equal('gam');
+  });
+
+  it('forwards all three alongside gpid', function () {
+    const imp = firstImp({
+      ...baseBid,
+      ortb2Imp: { ext: { gpid: '/1111/homepage#1', data: { pbadslot: '/1111/homepage', adserver: { name: 'gam', adslot: '/1111/slot' } } } },
+    });
+    expect(imp.ext.gpid).to.equal('/1111/homepage#1');
+    expect(imp.ext.data.pbadslot).to.equal('/1111/homepage');
+    expect(imp.ext.data.adserver.adslot).to.equal('/1111/slot');
+  });
+
+  // The point of forwarding the object whole: a key the exchange has not been taught
+  // about yet still arrives, with no adapter change.
+  it('forwards first-party data keys beyond the slot fields', function () {
+    const imp = firstImp({
+      ...baseBid,
+      ortb2Imp: { ext: { data: { pbadslot: '/1111/homepage', keywords: ['sport'], pageType: 'article' } } },
+    });
+    expect(imp.ext.data.keywords).to.deep.equal(['sport']);
+    expect(imp.ext.data.pageType).to.equal('article');
+  });
+
+  it('forwards ext.tid', function () {
+    const imp = firstImp({ ...baseBid, ortb2Imp: { ext: { tid: 'tid-abc-123' } } });
+    expect(imp.ext.tid).to.equal('tid-abc-123');
+  });
+
+  // Core strips tid when the transmitTid activity is denied; an absent value must not
+  // reappear as an empty key.
+  it('omits ext.tid when core has redacted it', function () {
+    const imp = firstImp({ ...baseBid, ortb2Imp: { ext: { gpid: '/1111/homepage#1' } } });
+    expect(imp.ext).to.not.have.property('tid');
+  });
+
+  // An empty ext.data would reach the exchange as a bare object on every request.
+  it('leaves ext.data absent when the publisher sets neither', function () {
+    const imp = firstImp({ ...baseBid, ortb2Imp: { ext: { gpid: '/1111/homepage#1' } } });
+    expect(imp.ext).to.not.have.property('data');
+  });
+
+  it('leaves ext.data absent when there is no ortb2Imp at all', function () {
+    const imp = firstImp(baseBid);
+    expect(imp.ext).to.not.have.property('data');
+  });
+});
