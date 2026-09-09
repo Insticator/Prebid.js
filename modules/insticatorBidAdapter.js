@@ -611,6 +611,11 @@ function buildBid(bid, bidderRequest, seatbid) {
     mediaType = declaredMediaTypes.audio && !declaredMediaTypes.video ? 'audio' : 'video';
   }
 
+  // bidResponseFilter rejects a bid outright when meta.mediaType is absent -- its
+  // mediaTypes.blockUnknown defaults to true and is not gated behind enforce -- so the
+  // resolved media type is mirrored onto meta rather than left for the publisher to infer.
+  meta.mediaType = mediaType;
+
   // TTL: Use bid.exp as upper bound if provided, otherwise use configTTL
   const configTTL = config.getConfig('insticator.bidTTL') || BID_TTL;
   const ttl = bid.exp && bid.exp > 0 ? Math.min(bid.exp, configTTL) : configTTL;
@@ -630,7 +635,8 @@ function buildBid(bid, bidderRequest, seatbid) {
     mediaType: mediaType,
     ad: bid.adm,
     adUnitCode: originalBid?.adUnitCode,
-    ...(Object.keys(meta).length > 0 ? { meta } : {})
+    // Always present now that mediaType is mirrored onto it.
+    meta
   };
 
   // ORTB 2.6: Add deal ID

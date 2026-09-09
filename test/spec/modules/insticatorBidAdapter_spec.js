@@ -985,7 +985,8 @@ describe('InsticatorBidAdapter', function () {
         meta: {
           advertiserDomains: ['test1.com'],
           test: 1,
-          seat: 'some-dsp'
+          seat: 'some-dsp',
+          mediaType: 'banner'
         }
       },
       {
@@ -1002,7 +1003,8 @@ describe('InsticatorBidAdapter', function () {
           advertiserDomains: [
             'test2.com'
           ],
-          seat: 'some-dsp'
+          seat: 'some-dsp',
+          mediaType: 'banner'
         },
         ad: 'adm2',
         adUnitCode: 'adunit-code-2',
@@ -1021,7 +1023,8 @@ describe('InsticatorBidAdapter', function () {
           advertiserDomains: [
             'test3.com'
           ],
-          seat: 'some-dsp'
+          seat: 'some-dsp',
+          mediaType: 'banner'
         },
         ad: 'adm3',
         adUnitCode: 'adunit-code-3',
@@ -2086,6 +2089,13 @@ describe('InsticatorBidAdapter — audio', function () {
       const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3, w: 300, h: 250 });
       expect(response.width).to.equal(300);
       expect(response.height).to.equal(250);
+    });
+
+    // bidResponseFilter rejects a bid whose meta.mediaType is absent: its
+    // mediaTypes.blockUnknown defaults to true and is not gated behind enforce.
+    it('mirrors the media type onto meta so bidResponseFilter cannot reject it', function () {
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 });
+      expect(response.meta.mediaType).to.equal('audio');
     });
 
     it('derives a vastUrl from the audio vastXml', function () {
