@@ -1,7 +1,7 @@
 import { config } from '../src/config.js';
 import { AUDIO, BANNER, VIDEO } from '../src/mediaTypes.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
-import { deepAccess, generateUUID, logError, isArray, isInteger, isArrayOfNums, deepSetValue, isFn, logWarn, getWinDimensions } from '../src/utils.js';
+import { deepAccess, generateUUID, logError, isArray, isInteger, isArrayOfNums, isPlainObject, deepSetValue, isFn, logWarn, getWinDimensions } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
 
 const BIDDER_CODE = 'insticator';
@@ -57,14 +57,14 @@ export const OPTIONAL_AUDIO_PARAMS = {
   'minbitrate': (value) => isInteger(value),
   'maxbitrate': (value) => isInteger(value),
   'delivery': (value) => isArrayOfNums(value),
-  'companionad': (value) => Array.isArray(value) && value.length > 0,
+  'companionad': (value) => Array.isArray(value) && value.length > 0 && value.every(isPlainObject),
   'api': (value) => isArrayOfNums(value),
   'companiontype': (value) => isArrayOfNums(value),
   'maxseq': (value) => isInteger(value) && value > 0,
   'feed': (value) => isInteger(value) && [1, 2, 3, 4, 5, 6, 7].includes(value),
   'stitched': (value) => isInteger(value) && [0, 1].includes(value),
   'nvol': (value) => isInteger(value) && [0, 1, 2, 3, 4].includes(value),
-  'durfloors': (value) => Array.isArray(value) && value.length > 0,
+  'durfloors': (value) => Array.isArray(value) && value.length > 0 && value.every(isPlainObject),
   'ext': (value) => typeof value === 'object' && value !== null && !Array.isArray(value),
 };
 

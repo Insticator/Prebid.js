@@ -2022,6 +2022,31 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(imp.audio.ext).to.deep.equal({ custom: 'value' });
     });
 
+    it('drops companionad and durfloors when the array does not hold objects', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: {
+          audio: {
+            ...audioBidRequest.mediaTypes.audio,
+            companionad: ['not-an-object'],
+            durfloors: [1, 2],
+          },
+        },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.companionad).to.not.exist;
+      expect(imp.audio.durfloors).to.not.exist;
+    });
+
+    it('drops ext when it is not a plain object', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, ext: ['nope'] } },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.ext).to.not.exist;
+    });
+
     it('drops pod params that are out of range', function () {
       const bid = {
         ...audioBidRequest,
