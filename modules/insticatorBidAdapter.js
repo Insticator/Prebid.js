@@ -41,6 +41,7 @@ export const OPTIONAL_VIDEO_PARAMS = {
 };
 
 export const OPTIONAL_AUDIO_PARAMS = {
+  'mimes': (value) => isValidAudioMimes(value),
   'minduration': (value) => isInteger(value),
   'maxduration': (value) => isInteger(value),
   'poddur': (value) => isInteger(value) && value > 0,
@@ -192,7 +193,6 @@ function isValidAudioMimes(value) {
 }
 
 function buildAudio(bidRequest) {
-  const mimes = deepAccess(bidRequest, 'mediaTypes.audio.mimes');
   const context = deepAccess(bidRequest, 'mediaTypes.audio.context');
 
   const bidRequestAudio = deepAccess(bidRequest, 'mediaTypes.audio');
@@ -213,18 +213,10 @@ function buildAudio(bidRequest) {
     optionalParams['context'] = context;
   }
 
-  const overrideMimes = audioBidderParams.mimes;
-  const resolvedMimes = isValidAudioMimes(overrideMimes)
-    ? overrideMimes
-    : (isValidAudioMimes(mimes) ? mimes : undefined);
-
-  const audioObj = {
-    ...(resolvedMimes !== undefined ? { mimes: resolvedMimes } : {}),
+  return {
     ...optionalParams,
     ...audioParamOverrides
   };
-
-  return audioObj;
 }
 
 function buildImpression(bidRequest) {

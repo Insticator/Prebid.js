@@ -1924,6 +1924,24 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(imp.audio).to.not.exist;
     });
 
+    it('prefers a valid params.audio mimes override over the ad unit value', function () {
+      const bid = {
+        ...audioBidRequest,
+        params: { ...audioBidRequest.params, audio: { mimes: ['audio/aac'] } },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.mimes).to.deep.equal(['audio/aac']);
+    });
+
+    it('keeps the ad unit mimes when the params.audio override is malformed', function () {
+      const bid = {
+        ...audioBidRequest,
+        params: { ...audioBidRequest.params, audio: { mimes: 'audio/aac' } },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.mimes).to.deep.equal(['audio/mp4', 'audio/mpeg']);
+    });
+
     it('drops a malformed mimes list rather than sending it', function () {
       const bid = { ...audioBidRequest, mediaTypes: { audio: { mimes: 'audio/mp4' } } };
       const imp = firstImp(bid);
