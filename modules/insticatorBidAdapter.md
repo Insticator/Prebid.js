@@ -18,7 +18,7 @@ This module connects publishers to Insticator exchange of demand sources through
 | --- | ---
 | Banner | Fully supported for all approved sizes.
 | Video | Fully supported.
-| Audio | Fully supported. Creatives are returned as VAST on `vastXml`, with a matching `vastUrl`.
+| Audio | Fully supported.
 
 # Bid Parameters
 
