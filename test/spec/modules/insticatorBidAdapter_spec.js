@@ -1777,6 +1777,15 @@ describe('InsticatorBidAdapter', function () {
 });
 
 describe('InsticatorBidAdapter — audio', function () {
+  function decodeVastDataUri(dataUri) {
+    const base64 = dataUri.replace(/^data:text\/xml;charset=utf-8;base64,/, '');
+    const binary = window.atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let idx = 0; idx < binary.length; idx++) {
+      bytes[idx] = binary.charCodeAt(idx);
+    }
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  }
   const audioBidRequest = {
     bidder: 'insticator',
     adUnitCode: 'audio-adunit',
@@ -2173,6 +2182,7 @@ describe('InsticatorBidAdapter — audio', function () {
       const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: localisedVast, mtype: 3 });
       expect(response.vastUrl).to.be.a('string').and.to.contain('data:text/xml');
       expect(response.vastXml).to.equal(localisedVast);
+      expect(decodeVastDataUri(response.vastUrl)).to.equal(localisedVast);
     });
   });
 });

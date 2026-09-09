@@ -538,9 +538,10 @@ function buildRequest(validBidRequests, bidderRequest) {
 }
 
 const FROM_CHAR_CODE_CHUNK = 0x8000;
+const VAST_TEXT_ENCODER = new TextEncoder();
 
 function vastXmlToDataUri(vastXml) {
-  const utf8Bytes = new TextEncoder().encode(vastXml.replace(/\\"/g, '"'));
+  const utf8Bytes = VAST_TEXT_ENCODER.encode(vastXml.replace(/\\"/g, '"'));
   let latin1 = '';
   for (let offset = 0; offset < utf8Bytes.length; offset += FROM_CHAR_CODE_CHUNK) {
     latin1 += String.fromCharCode.apply(null, utf8Bytes.subarray(offset, offset + FROM_CHAR_CODE_CHUNK));
