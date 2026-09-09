@@ -1,7 +1,7 @@
 import { config } from '../src/config.js';
-import { BANNER, VIDEO } from '../src/mediaTypes.js';
+import { AUDIO, BANNER, VIDEO } from '../src/mediaTypes.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
-import { deepAccess, generateUUID, logError, isArray, isInteger, isArrayOfNums, deepSetValue, isFn, logWarn, getWinDimensions } from '../src/utils.js';
+import { deepAccess, generateUUID, logError, isArray, isInteger, isArrayOfNums, isPlainObject, deepSetValue, isFn, logWarn, getWinDimensions } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
 
 const BIDDER_CODE = 'insticator';
@@ -38,6 +38,35 @@ export const OPTIONAL_VIDEO_PARAMS = {
   'mincpmpersec': (value) => typeof value === 'number' && value > 0,
   'maxseq': (value) => isInteger(value) && value > 0,
   'rqddurs': (value) => isArrayOfNums(value) && value.every(v => v > 0),
+};
+
+export const OPTIONAL_AUDIO_PARAMS = {
+  'mimes': (value) => Array.isArray(value) && value.length > 0 && value.every((mime) => typeof mime === 'string' && mime.length > 0),
+  'minduration': (value) => isInteger(value),
+  'maxduration': (value) => isInteger(value),
+  'poddur': (value) => isInteger(value) && value > 0,
+  'protocols': (value) => isArrayOfNums(value),
+  'startdelay': (value) => isInteger(value),
+  'rqddurs': (value) => isArrayOfNums(value) && value.every((duration) => duration > 0),
+  'podid': (value) => typeof value === 'string' && value.length > 0,
+  'podseq': (value) => isInteger(value) && value >= 0,
+  'sequence': (value) => isInteger(value),
+  'slotinpod': (value) => isInteger(value) && [-1, 0, 1, 2].includes(value),
+  'mincpmpersec': (value) => typeof value === 'number' && value > 0,
+  'battr': (value) => isArrayOfNums(value),
+  'maxextended': (value) => isInteger(value),
+  'minbitrate': (value) => isInteger(value),
+  'maxbitrate': (value) => isInteger(value),
+  'delivery': (value) => isArrayOfNums(value),
+  'companionad': (value) => Array.isArray(value) && value.length > 0 && value.every(isPlainObject),
+  'api': (value) => isArrayOfNums(value),
+  'companiontype': (value) => isArrayOfNums(value),
+  'maxseq': (value) => isInteger(value) && value > 0,
+  'feed': (value) => isInteger(value) && [1, 2, 3, 4, 5, 6, 7].includes(value),
+  'stitched': (value) => isInteger(value) && [0, 1].includes(value),
+  'nvol': (value) => isInteger(value) && [0, 1, 2, 3, 4].includes(value),
+  'durfloors': (value) => Array.isArray(value) && value.length > 0 && value.every(isPlainObject),
+  'ext': (value) => typeof value === 'object' && value !== null && !Array.isArray(value),
 };
 
 const ORTB_SITE_FIRST_PARTY_DATA = {
@@ -155,6 +184,33 @@ function buildVideo(bidRequest) {
   return videoObj;
 }
 
+function buildAudio(bidRequest) {
+  const context = deepAccess(bidRequest, 'mediaTypes.audio.context');
+
+  const bidRequestAudio = deepAccess(bidRequest, 'mediaTypes.audio');
+  const audioBidderParams = deepAccess(bidRequest, 'params.audio', {});
+
+  const optionalParams = {};
+  const audioParamOverrides = {};
+  for (const param in OPTIONAL_AUDIO_PARAMS) {
+    if (bidRequestAudio[param] != null && OPTIONAL_AUDIO_PARAMS[param](bidRequestAudio[param])) {
+      optionalParams[param] = bidRequestAudio[param];
+    }
+    if (audioBidderParams[param] != null && OPTIONAL_AUDIO_PARAMS[param](audioBidderParams[param])) {
+      audioParamOverrides[param] = audioBidderParams[param];
+    }
+  }
+
+  if (context !== undefined) {
+    optionalParams['context'] = context;
+  }
+
+  return {
+    ...optionalParams,
+    ...audioParamOverrides
+  };
+}
+
 function buildImpression(bidRequest) {
   const imp = {
     id: bidRequest.bidId,
@@ -168,6 +224,16 @@ function buildImpression(bidRequest) {
       },
     },
   };
+
+  const impFirstPartyData = deepAccess(bidRequest, 'ortb2Imp.ext.data');
+  if (impFirstPartyData && Object.keys(impFirstPartyData).length > 0) {
+    deepSetValue(imp, 'ext.data', impFirstPartyData);
+  }
+
+  const transactionId = deepAccess(bidRequest, 'ortb2Imp.ext.tid');
+  if (transactionId) {
+    deepSetValue(imp, 'ext.tid', transactionId);
+  }
 
   if (bidRequest?.params?.adUnitId) {
     deepSetValue(imp, 'ext.prebid.bidder.insticator.adUnitId', bidRequest.params.adUnitId);
@@ -198,10 +264,14 @@ function buildImpression(bidRequest) {
     imp.video = buildVideo(bidRequest);
   }
 
+  if (deepAccess(bidRequest, 'mediaTypes.audio')) {
+    imp.audio = buildAudio(bidRequest);
+  }
+
   if (isFn(bidRequest.getFloor)) {
     let moduleBidFloor;
 
-    const mediaType = deepAccess(bidRequest, 'mediaTypes.banner') ? 'banner' : deepAccess(bidRequest, 'mediaTypes.video') ? 'video' : undefined;
+    const mediaType = deepAccess(bidRequest, 'mediaTypes.banner') ? 'banner' : deepAccess(bidRequest, 'mediaTypes.video') ? 'video' : deepAccess(bidRequest, 'mediaTypes.audio') ? 'audio' : undefined;
 
     let _mediaType = mediaType;
     let _size = '*';
@@ -451,6 +521,18 @@ function buildRequest(validBidRequests, bidderRequest) {
   return req;
 }
 
+const FROM_CHAR_CODE_CHUNK = 0x8000;
+const VAST_TEXT_ENCODER = new TextEncoder();
+
+function vastXmlToDataUri(vastXml) {
+  const utf8Bytes = VAST_TEXT_ENCODER.encode(vastXml.replace(/\\"/g, '"'));
+  let latin1 = '';
+  for (let offset = 0; offset < utf8Bytes.length; offset += FROM_CHAR_CODE_CHUNK) {
+    latin1 += String.fromCharCode.apply(null, utf8Bytes.subarray(offset, offset + FROM_CHAR_CODE_CHUNK));
+  }
+  return 'data:text/xml;charset=utf-8;base64,' + window.btoa(latin1);
+}
+
 function buildBid(bid, bidderRequest, seatbid) {
   const originalBid = ((bidderRequest.bids) || []).find((b) => b.bidId === bid.impid);
 
@@ -490,10 +572,15 @@ function buildBid(bid, bidderRequest, seatbid) {
     mediaType = 'video';
   } else if (bid.mtype === 1) {
     mediaType = 'banner';
+  } else if (Number(bid.mtype) === 3) {
+    mediaType = 'audio';
   // 2. Fall back to content detection (case-insensitive)
   } else if (bid.adm && bid.adm.toLowerCase().includes('<vast') && !bid.adm.toLowerCase().includes('<script')) {
-    mediaType = 'video';
+    const declaredMediaTypes = originalBid?.mediaTypes || {};
+    mediaType = declaredMediaTypes.audio && !declaredMediaTypes.video ? 'audio' : 'video';
   }
+
+  meta.mediaType = mediaType;
 
   // TTL: Use bid.exp as upper bound if provided, otherwise use configTTL
   const configTTL = config.getConfig('insticator.bidTTL') || BID_TTL;
@@ -506,12 +593,12 @@ function buildBid(bid, bidderRequest, seatbid) {
     currency: 'USD',
     netRevenue: true,
     ttl: ttl,
-    width: bid.w,
-    height: bid.h,
+    ...(bid.w != null ? { width: bid.w } : {}),
+    ...(bid.h != null ? { height: bid.h } : {}),
     mediaType: mediaType,
     ad: bid.adm,
     adUnitCode: originalBid?.adUnitCode,
-    ...(Object.keys(meta).length > 0 ? { meta } : {})
+    meta
   };
 
   // ORTB 2.6: Add deal ID
@@ -527,6 +614,13 @@ function buildBid(bid, bidderRequest, seatbid) {
   // ORTB 2.6: Add notice URL for win notification
   if (bid.nurl) {
     bidResponse.nurl = bid.nurl;
+  }
+
+  if (mediaType === 'audio') {
+    bidResponse.vastXml = bid.adm;
+    if (bid.adm) {
+      bidResponse.vastUrl = vastXmlToDataUri(bid.adm);
+    }
   }
 
   if (mediaType === 'video') {
@@ -585,8 +679,8 @@ function validateAdUnitId(bid) {
 }
 
 function validateMediaType(bid) {
-  if (!(BANNER in bid.mediaTypes || VIDEO in bid.mediaTypes)) {
-    logError('insticator: expected banner or video in mediaTypes');
+  if (!(BANNER in bid.mediaTypes || VIDEO in bid.mediaTypes || AUDIO in bid.mediaTypes)) {
+    logError('insticator: expected banner, video or audio in mediaTypes');
     return false;
   }
 
@@ -671,6 +765,34 @@ function validateVideo(bid) {
   return true;
 }
 
+function validateAudio(bid) {
+  const audioParams = deepAccess(bid, 'mediaTypes.audio');
+  const audioBidderParams = deepAccess(bid, 'params.audio');
+  const audio = {
+    ...audioParams,
+    ...audioBidderParams
+  };
+
+  if (audioParams === undefined) {
+    return true;
+  }
+
+  for (const param in OPTIONAL_AUDIO_PARAMS) {
+    if (audio[param]) {
+      if (!OPTIONAL_AUDIO_PARAMS[param](audio[param])) {
+        logError(`insticator: audio ${param} is invalid or not supported by insticator`);
+      }
+    }
+  }
+
+  if (isInteger(audio.minduration) && isInteger(audio.maxduration) && audio.minduration > audio.maxduration) {
+    logError('insticator: audio minduration is greater than maxduration');
+    return false;
+  }
+
+  return true;
+}
+
 function parsePlayerSizeToWidthHeight(playerSize, w, h) {
   if (!w && playerSize) {
     if (Array.isArray(playerSize[0])) {
@@ -693,14 +815,15 @@ function parsePlayerSizeToWidthHeight(playerSize, w, h) {
 export const spec = {
   code: BIDDER_CODE,
   gvlid: GVLID,
-  supportedMediaTypes: [BANNER, VIDEO],
+  supportedMediaTypes: [BANNER, VIDEO, AUDIO],
 
   isBidRequestValid: function (bid) {
     return (
       validateAdUnitId(bid) &&
       validateMediaType(bid) &&
       validateBanner(bid) &&
-      validateVideo(bid)
+      validateVideo(bid) &&
+      validateAudio(bid)
     );
   },
 
