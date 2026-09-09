@@ -56,6 +56,32 @@ object are detailed here.
 	]
 ```
 
+### Video
+```
+    var adUnits = [
+           {
+               code: 'test-video-div',
+               mediaTypes: {
+                   video: {
+                       playerSize: [[640, 480]],
+                       mimes: ['video/mp4'],
+                       plcmt: 1,
+                       minduration: 1,
+                       maxduration: 30
+                   }
+               },
+               bids: [
+                   {
+                       bidder: 'insticator',
+                       params: {
+                           adUnitId: 'test'
+                       }
+                   }
+               ]
+           }
+	]
+```
+
 ### Audio
 ```
     var adUnits = [
