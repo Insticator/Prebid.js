@@ -41,7 +41,7 @@ export const OPTIONAL_VIDEO_PARAMS = {
 };
 
 export const OPTIONAL_AUDIO_PARAMS = {
-  'mimes': (value) => isValidAudioMimes(value),
+  'mimes': (value) => Array.isArray(value) && value.length > 0 && value.every((mime) => typeof mime === 'string' && mime.length > 0),
   'minduration': (value) => isInteger(value),
   'maxduration': (value) => isInteger(value),
   'poddur': (value) => isInteger(value) && value > 0,
@@ -182,14 +182,6 @@ function buildVideo(bidRequest) {
   };
 
   return videoObj;
-}
-
-function isValidAudioMimes(value) {
-  return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    value.every((mime) => typeof mime === 'string' && mime.length > 0)
-  );
 }
 
 function buildAudio(bidRequest) {
