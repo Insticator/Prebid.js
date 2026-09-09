@@ -2038,6 +2038,43 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(imp.audio.durfloors).to.not.exist;
     });
 
+    it('carries the bitrate bounds and the delivery context', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: {
+          audio: {
+            ...audioBidRequest.mediaTypes.audio,
+            minbitrate: 32,
+            maxbitrate: 320,
+            context: 'instream',
+          },
+        },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.minbitrate).to.equal(32);
+      expect(imp.audio.maxbitrate).to.equal(320);
+      expect(imp.audio.context).to.equal('instream');
+    });
+
+    it('keeps the bid but drops a stringified duration', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, minduration: '5', maxduration: '30' } },
+      };
+      expect(spec.isBidRequestValid(bid)).to.equal(true);
+      const imp = firstImp(bid);
+      expect(imp.audio.minduration).to.not.exist;
+      expect(imp.audio.maxduration).to.not.exist;
+    });
+
+    it('rejects the bid when minduration exceeds maxduration as integers', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, minduration: 30, maxduration: 5 } },
+      };
+      expect(spec.isBidRequestValid(bid)).to.equal(false);
+    });
+
     it('drops ext when it is not a plain object', function () {
       const bid = {
         ...audioBidRequest,
@@ -2177,6 +2214,19 @@ describe('InsticatorBidAdapter — audio', function () {
     it('mirrors the media type onto meta so bidResponseFilter cannot reject it', function () {
       const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 });
       expect(response.meta.mediaType).to.equal('audio');
+    });
+
+    it('mirrors the media type onto meta for every mtype the exchange can send', function () {
+      const cases = [
+        { mtype: 1, adm: '<div>banner</div>', expected: 'banner' },
+        { mtype: 2, adm: vast, expected: 'video' },
+        { mtype: 3, adm: vast, expected: 'audio' },
+      ];
+      cases.forEach(({ mtype, adm, expected }) => {
+        const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm, mtype });
+        expect(response.meta.mediaType).to.equal(expected);
+        expect(response.mediaType).to.equal(expected);
+      });
     });
 
     it('derives a vastUrl from the audio vastXml', function () {
