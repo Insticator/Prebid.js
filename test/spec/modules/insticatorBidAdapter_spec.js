@@ -1971,6 +1971,72 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(imp.audio.sequence).to.equal(2);
     });
 
+    it('carries the audio ad pod params', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: {
+          audio: {
+            ...audioBidRequest.mediaTypes.audio,
+            poddur: 120,
+            podid: 'pod-1',
+            podseq: 0,
+            slotinpod: 1,
+            mincpmpersec: 0.05,
+            maxseq: 4,
+          },
+        },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.poddur).to.equal(120);
+      expect(imp.audio.podid).to.equal('pod-1');
+      expect(imp.audio.podseq).to.equal(0);
+      expect(imp.audio.slotinpod).to.equal(1);
+      expect(imp.audio.mincpmpersec).to.equal(0.05);
+      expect(imp.audio.maxseq).to.equal(4);
+    });
+
+    it('carries companionad, durfloors and ext', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: {
+          audio: {
+            ...audioBidRequest.mediaTypes.audio,
+            companionad: [{ w: 300, h: 250 }],
+            durfloors: [{ mindur: 15, maxdur: 30, bidfloor: 1.5 }],
+            ext: { custom: 'value' },
+          },
+        },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.companionad).to.deep.equal([{ w: 300, h: 250 }]);
+      expect(imp.audio.durfloors).to.deep.equal([{ mindur: 15, maxdur: 30, bidfloor: 1.5 }]);
+      expect(imp.audio.ext).to.deep.equal({ custom: 'value' });
+    });
+
+    it('drops pod params that are out of range', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: {
+          audio: {
+            ...audioBidRequest.mediaTypes.audio,
+            poddur: 0,
+            podid: '',
+            podseq: -1,
+            slotinpod: 9,
+            mincpmpersec: 0,
+            maxseq: -2,
+          },
+        },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.poddur).to.not.exist;
+      expect(imp.audio.podid).to.not.exist;
+      expect(imp.audio.podseq).to.not.exist;
+      expect(imp.audio.slotinpod).to.not.exist;
+      expect(imp.audio.mincpmpersec).to.not.exist;
+      expect(imp.audio.maxseq).to.not.exist;
+    });
+
     it('drops rqddurs when any duration is not positive', function () {
       const bid = {
         ...audioBidRequest,
