@@ -32,7 +32,7 @@ export const OPTIONAL_VIDEO_PARAMS = {
   'api': (value) => isArrayOfNums(value),
   // ORTB 2.6 video parameters
   'podid': (value) => typeof value === 'string' && value.length > 0,
-  'podseq': (value) => isInteger(value) && value >= 0,
+  'podseq': (value) => isInteger(value) && [-1, 0, 1].includes(value),
   'poddur': (value) => isInteger(value) && value > 0,
   'slotinpod': (value) => isInteger(value) && [-1, 0, 1, 2].includes(value),
   'mincpmpersec': (value) => typeof value === 'number' && value > 0,
@@ -49,7 +49,7 @@ export const OPTIONAL_AUDIO_PARAMS = {
   'startdelay': (value) => isInteger(value),
   'rqddurs': (value) => isArrayOfNums(value) && value.every((duration) => duration > 0),
   'podid': (value) => typeof value === 'string' && value.length > 0,
-  'podseq': (value) => isInteger(value) && value >= 0,
+  'podseq': (value) => isInteger(value) && [-1, 0, 1].includes(value),
   'sequence': (value) => isInteger(value),
   'slotinpod': (value) => isInteger(value) && [-1, 0, 1, 2].includes(value),
   'mincpmpersec': (value) => typeof value === 'number' && value > 0,
@@ -775,6 +775,10 @@ function validateAudio(bid) {
 
   if (audioParams === undefined) {
     return true;
+  }
+
+  if (!audio.mimes) {
+    logWarn('insticator: audio mimes not specified - exchange will default to audio/mp4, audio/mpeg, audio/aac');
   }
 
   for (const param in OPTIONAL_AUDIO_PARAMS) {

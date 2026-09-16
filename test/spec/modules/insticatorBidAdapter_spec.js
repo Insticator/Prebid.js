@@ -763,6 +763,28 @@ describe('InsticatorBidAdapter', function () {
       expect(data.imp[0].video).to.not.have.property('plcmt');
     });
 
+    it('carries video podseq -1 and drops a value outside the AdCOM list', function () {
+      const podBidRequest = {
+        ...bidRequest,
+        mediaTypes: {
+          ...bidRequest.mediaTypes,
+          video: { ...bidRequest.mediaTypes.video, podseq: -1 },
+        },
+      };
+      const podData = JSON.parse(spec.buildRequests([podBidRequest], bidderRequest)[0].data);
+      expect(podData.imp[0].video.podseq).to.equal(-1);
+
+      const outOfRange = {
+        ...bidRequest,
+        mediaTypes: {
+          ...bidRequest.mediaTypes,
+          video: { ...bidRequest.mediaTypes.video, podseq: 2 },
+        },
+      };
+      const outOfRangeData = JSON.parse(spec.buildRequests([outOfRange], bidderRequest)[0].data);
+      expect(outOfRangeData.imp[0].video).to.not.have.property('podseq');
+    });
+
     it('should have user consent and gdpr string if gdprConsent is passed', function () {
       const requests = spec.buildRequests([bidRequest], bidderRequest);
       const data = JSON.parse(requests[0].data);
@@ -1827,6 +1849,34 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(spec.isBidRequestValid(bid)).to.be.true;
     });
 
+    it('warns when audio mimes are absent, without rejecting the bid', function () {
+      const logWarnStub = sinon.stub(utils, 'logWarn');
+      try {
+        const bid = { ...audioBidRequest, mediaTypes: { audio: { minduration: 5, maxduration: 30 } } };
+        expect(spec.isBidRequestValid(bid)).to.be.true;
+        const messages = logWarnStub.getCalls().map((call) => String(call.args[0]));
+        expect(messages.some((message) => message.includes('audio mimes not specified'))).to.be.true;
+      } finally {
+        logWarnStub.restore();
+      }
+    });
+
+    it('does not warn when mimes arrive through params.audio', function () {
+      const logWarnStub = sinon.stub(utils, 'logWarn');
+      try {
+        const bid = {
+          ...audioBidRequest,
+          mediaTypes: { audio: { minduration: 5, maxduration: 30 } },
+          params: { ...audioBidRequest.params, audio: { mimes: ['audio/aac'] } },
+        };
+        expect(spec.isBidRequestValid(bid)).to.be.true;
+        const messages = logWarnStub.getCalls().map((call) => String(call.args[0]));
+        expect(messages.some((message) => message.includes('audio mimes not specified'))).to.be.false;
+      } finally {
+        logWarnStub.restore();
+      }
+    });
+
     it('does not read stringified durations as inverted', function () {
       const bid = { ...audioBidRequest, mediaTypes: { audio: { mimes: ['audio/mp4'], minduration: '5', maxduration: '30' } } };
       expect(spec.isBidRequestValid(bid)).to.be.true;
@@ -2110,7 +2160,7 @@ describe('InsticatorBidAdapter — audio', function () {
             ...audioBidRequest.mediaTypes.audio,
             poddur: 0,
             podid: '',
-            podseq: -1,
+            podseq: 2,
             slotinpod: 9,
             mincpmpersec: 0,
             maxseq: -2,
@@ -2124,6 +2174,17 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(imp.audio.slotinpod).to.not.exist;
       expect(imp.audio.mincpmpersec).to.not.exist;
       expect(imp.audio.maxseq).to.not.exist;
+    });
+
+    it('carries podseq -1, the AdCOM value for the last pod in the stream', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: {
+          audio: { ...audioBidRequest.mediaTypes.audio, podseq: -1 },
+        },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.podseq).to.equal(-1);
     });
 
     it('drops rqddurs when any duration is not positive', function () {
