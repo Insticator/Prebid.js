@@ -779,7 +779,7 @@ function validateAudio(bid) {
   }
 
   if (!audio.mimes) {
-    logWarn('insticator: audio mimes not specified - exchange will default to audio/mp4, audio/mpeg, audio/aac');
+    logWarn('insticator: audio mimes not specified. Setting mediaTypes.audio.mimes is recommended.');
   }
 
   for (const param in OPTIONAL_AUDIO_PARAMS) {
