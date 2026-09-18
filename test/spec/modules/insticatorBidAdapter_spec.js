@@ -1514,6 +1514,8 @@ describe('InsticatorBidAdapter', function () {
         });
 
         it('should detect video using case-insensitive VAST detection', function () {
+          const videoRequests = utils.deepClone(ortb26BidRequests);
+          videoRequests.bidderRequest.bids[0].mediaTypes.video = { mimes: ['video/mp4'] };
           const response = {
             body: {
               id: '22edbae2733bf6',
@@ -1531,7 +1533,7 @@ describe('InsticatorBidAdapter', function () {
               }]
             }
           };
-          const bidResponse = spec.interpretResponse(response, ortb26BidRequests)[0];
+          const bidResponse = spec.interpretResponse(response, videoRequests)[0];
           expect(bidResponse.mediaType).to.equal('video');
         });
 
@@ -2516,5 +2518,113 @@ describe('InsticatorBidAdapter — vastUrl encoding', function () {
       { bidderRequest: { bidderRequestId: 'req-1', bids: [{ ...videoBidRequest, bidId: 'audio-bid-1', mediaTypes: { audio: { mimes: ['audio/mp4'] } } }] } },
     )[0].vastUrl;
     expect(respondVideo(creative).vastUrl).to.equal(audioUrl);
+  });
+});
+
+describe('InsticatorBidAdapter — media type when mtype is absent', function () {
+  const audioVast = '<VAST version="4.1"><Ad><InLine><Creatives><Creative><Linear><MediaFiles>' +
+    '<MediaFile type="audio/mp4"><![CDATA[https://cdn.example/ad.m4a]]></MediaFile>' +
+    '</MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>';
+  const videoVast = audioVast.replace('audio/mp4', 'video/mp4').replace('ad.m4a', 'ad.mp4');
+
+  const resolve = (mediaTypes, adm) => spec.interpretResponse(
+    { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'b1', crid: 'cr1', price: 1.5, adm }] }] } },
+    {
+      bidderRequest: {
+        bidderRequestId: 'req-1',
+        bids: [{
+          bidder: 'insticator',
+          adUnitCode: 'au',
+          params: { adUnitId: '1a2b3c4d5e6f1a2b3c4d' },
+          mediaTypes,
+          bidId: 'b1'
+        }]
+      }
+    },
+  )[0]?.mediaType;
+
+  const audio = { audio: { mimes: ['audio/mp4'] } };
+  const video = { video: { mimes: ['video/mp4'] } };
+  const banner = { banner: { sizes: [[300, 250]] } };
+
+  it('resolves audio from an audio-only ad unit', function () {
+    expect(resolve(audio, audioVast)).to.equal('audio');
+  });
+
+  it('resolves video from a video-only ad unit', function () {
+    expect(resolve(video, videoVast)).to.equal('video');
+  });
+
+  it('uses the MediaFile type when the unit declares audio and video', function () {
+    expect(resolve({ ...audio, ...video }, audioVast)).to.equal('audio');
+    expect(resolve({ ...audio, ...video }, videoVast)).to.equal('video');
+  });
+
+  it('reads the MediaFile type through untidy attribute formatting', function () {
+    const untidy = [
+      '<MediaFile type=\'audio/mpeg\'>',
+      '<MediaFile type = "audio/mp4">',
+      '<MediaFile type=audio/aac>',
+      '<MediaFile TYPE="AUDIO/MP4">',
+      '<MediaFile type="  audio/mp4">',
+      '<MediaFile type="audio /mp4">',
+    ];
+    untidy.forEach((mediaFile) => {
+      const adm = `<VAST version="4.1"><Ad><InLine><Creatives><Creative><Linear><MediaFiles>${mediaFile}<![CDATA[https://cdn.example/ad]]></MediaFile></MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>`;
+      expect(resolve({ ...audio, ...video }, adm), mediaFile).to.equal('audio');
+    });
+  });
+
+  it('does not mistake an audio path in a video media file URL', function () {
+    const adm = '<VAST version="4.1"><Ad><InLine><Creatives><Creative><Linear><MediaFiles>' +
+      '<MediaFile type="video/mp4"><![CDATA[https://cdn.example/audio/clip.mp4]]></MediaFile>' +
+      '</MediaFiles></Linear></Creative></Creatives></InLine></Ad></VAST>';
+    expect(resolve({ ...audio, ...video }, adm)).to.equal('video');
+  });
+
+  it('keeps banner when the ad unit declares neither audio nor video', function () {
+    expect(resolve(banner, videoVast)).to.equal('banner');
+  });
+
+  it('keeps banner when no request bid matches the response', function () {
+    const response = spec.interpretResponse(
+      { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'unmatched', crid: 'cr1', price: 1.5, adm: videoVast }] }] } },
+      {
+        bidderRequest: {
+          bidderRequestId: 'req-1',
+          bids: [{
+            bidder: 'insticator',
+            adUnitCode: 'au',
+            params: { adUnitId: '1a2b3c4d5e6f1a2b3c4d' },
+            mediaTypes: video,
+            bidId: 'b1'
+          }]
+        }
+      },
+    )[0];
+    expect(response.mediaType).to.equal('banner');
+  });
+
+  it('prefers video when the unit declares both and no MediaFile names audio', function () {
+    expect(resolve({ ...audio, ...video }, '<VAST version="4.1"><Ad><InLine></InLine></Ad></VAST>')).to.equal('video');
+  });
+
+  it('still lets mtype win over the markup', function () {
+    const withMtype = spec.interpretResponse(
+      { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'b1', crid: 'cr1', price: 1.5, adm: audioVast, mtype: 2 }] }] } },
+      {
+        bidderRequest: {
+          bidderRequestId: 'req-1',
+          bids: [{
+            bidder: 'insticator',
+            adUnitCode: 'au',
+            params: { adUnitId: '1a2b3c4d5e6f1a2b3c4d' },
+            mediaTypes: { ...audio, ...video },
+            bidId: 'b1'
+          }]
+        }
+      },
+    )[0];
+    expect(withMtype.mediaType).to.equal('video');
   });
 });

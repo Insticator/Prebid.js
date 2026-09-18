@@ -579,7 +579,14 @@ function buildBid(bid, bidderRequest, seatbid) {
   // 2. Fall back to content detection (case-insensitive)
   } else if (bid.adm && bid.adm.toLowerCase().includes('<vast') && !bid.adm.toLowerCase().includes('<script')) {
     const declaredMediaTypes = originalBid?.mediaTypes || {};
-    mediaType = declaredMediaTypes.audio && !declaredMediaTypes.video ? 'audio' : 'video';
+    if (declaredMediaTypes.audio && declaredMediaTypes.video) {
+      // Audio and video VAST look alike; the MediaFile MIME type is what separates them.
+      mediaType = /type\s*=\s*["']?\s*audio\s*\//i.test(bid.adm) ? 'audio' : 'video';
+    } else if (declaredMediaTypes.video) {
+      mediaType = 'video';
+    } else if (declaredMediaTypes.audio) {
+      mediaType = 'audio';
+    }
   }
 
   meta.mediaType = mediaType;
