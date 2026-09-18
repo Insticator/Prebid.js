@@ -532,7 +532,7 @@ const FROM_CHAR_CODE_CHUNK = 0x8000;
 const VAST_TEXT_ENCODER = new TextEncoder();
 
 function vastXmlToDataUri(vastXml) {
-  const utf8Bytes = VAST_TEXT_ENCODER.encode(vastXml.replace(/\\"/g, '"'));
+  const utf8Bytes = VAST_TEXT_ENCODER.encode(vastXml);
   let latin1 = '';
   for (let offset = 0; offset < utf8Bytes.length; offset += FROM_CHAR_CODE_CHUNK) {
     latin1 += String.fromCharCode.apply(null, utf8Bytes.subarray(offset, offset + FROM_CHAR_CODE_CHUNK));
@@ -642,7 +642,7 @@ function buildBid(bid, bidderRequest, seatbid) {
 
   // Inticator bid adaptor only returns `vastXml` for video bids. No VastUrl or videoCache.
   if (!bidResponse.vastUrl && bidResponse.vastXml) {
-    bidResponse.vastUrl = 'data:text/xml;charset=utf-8;base64,' + window.btoa(bidResponse.vastXml.replace(/\\"/g, '"'));
+    bidResponse.vastUrl = 'data:text/xml;charset=utf-8;base64,' + window.btoa(bidResponse.vastXml);
   }
 
   if (bid.ext && bid.ext.dsa) {

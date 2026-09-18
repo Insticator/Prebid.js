@@ -2386,6 +2386,13 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(response.vastXml).to.equal(localisedVast);
       expect(decodeVastDataUri(response.vastUrl)).to.equal(localisedVast);
     });
+
+    it('preserves escaped quotes inside the creative', function () {
+      const embeddedJson = '<VAST version="4.1"><Ad><InLine><Extensions><Extension><![CDATA[{"title":"He said \\"hi\\"","id":7}]]></Extension></Extensions></InLine></Ad></VAST>';
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: embeddedJson, mtype: 3 });
+      expect(response.vastXml).to.equal(embeddedJson);
+      expect(decodeVastDataUri(response.vastUrl)).to.equal(embeddedJson);
+    });
   });
 });
 
