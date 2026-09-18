@@ -575,12 +575,11 @@ function buildBid(bid, bidderRequest, seatbid) {
   let mediaType = 'banner';
 
   // 1. Check ORTB 2.6 mtype first (most reliable)
-  const markupType = Number(bid.mtype);
-  if (markupType === 1) {
+  if (bid.mtype === 1) {
     mediaType = 'banner';
-  } else if (markupType === 2) {
+  } else if (bid.mtype === 2) {
     mediaType = 'video';
-  } else if (markupType === 3) {
+  } else if (bid.mtype === 3) {
     mediaType = 'audio';
   // 2. Fall back to content detection (case-insensitive)
   } else if (bid.adm && bid.adm.toLowerCase().includes('<vast') && !bid.adm.toLowerCase().includes('<script')) {

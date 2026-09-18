@@ -1491,31 +1491,6 @@ describe('InsticatorBidAdapter', function () {
           expect(bidResponse.mediaType).to.equal('video');
         });
 
-        it('resolves a stringified mtype the same way as a numeric one', function () {
-          const responseFor = (mtype) => ({
-            body: {
-              id: '22edbae2733bf6',
-              seatbid: [{
-                seat: 'dsp-1',
-                bid: [{
-                  impid: 'bid1',
-                  crid: 'crid1',
-                  price: 1.0,
-                  w: 300,
-                  h: 250,
-                  adm: 'some non-vast content',
-                  mtype,
-                }]
-              }]
-            }
-          });
-          [[1, 'banner'], ['1', 'banner'], [2, 'video'], ['2', 'video'], [3, 'audio'], ['3', 'audio']]
-            .forEach(([mtype, expected]) => {
-              const bidResponse = spec.interpretResponse(responseFor(mtype), ortb26BidRequests)[0];
-              expect(bidResponse.mediaType).to.equal(expected);
-            });
-        });
-
         it('should detect banner using mtype=1 (ORTB 2.6 standard)', function () {
           const response = {
             body: {
@@ -2386,7 +2361,7 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(response.vastUrl).to.be.a('string').and.to.contain('data:text/xml');
     });
 
-    it('maps a string mtype "3" to audio on a multi-format unit', function () {
+    it('lets mtype decide audio on a multi-format unit', function () {
       const multiFormat = {
         bidderRequest: {
           bidderRequestId: 'req-1',
@@ -2398,7 +2373,7 @@ describe('InsticatorBidAdapter — audio', function () {
         },
       };
       const [response] = spec.interpretResponse(
-        { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: '3' }] }] } },
+        { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 }] }] } },
         multiFormat,
       );
       expect(response.mediaType).to.equal('audio');
