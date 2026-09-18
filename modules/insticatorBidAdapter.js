@@ -618,26 +618,17 @@ function buildBid(bid, bidderRequest, seatbid) {
     bidResponse.nurl = bid.nurl;
   }
 
-  if (mediaType === 'audio') {
+  if (mediaType === 'audio' || mediaType === 'video') {
     bidResponse.vastXml = bid.adm;
     if (bid.adm) {
       bidResponse.vastUrl = vastXmlToDataUri(bid.adm);
     }
   }
 
-  if (mediaType === 'video') {
-    bidResponse.vastXml = bid.adm;
-
-    // ORTB 2.6: Add video duration
-    if (bid.dur && isInteger(bid.dur) && bid.dur > 0) {
-      bidResponse.video = bidResponse.video || {};
-      bidResponse.video.durationSeconds = bid.dur;
-    }
-  }
-
-  // Inticator bid adaptor only returns `vastXml` for video bids. No VastUrl or videoCache.
-  if (!bidResponse.vastUrl && bidResponse.vastXml) {
-    bidResponse.vastUrl = vastXmlToDataUri(bidResponse.vastXml);
+  // ORTB 2.6: Add video duration
+  if (mediaType === 'video' && bid.dur && isInteger(bid.dur) && bid.dur > 0) {
+    bidResponse.video = bidResponse.video || {};
+    bidResponse.video.durationSeconds = bid.dur;
   }
 
   if (bid.ext && bid.ext.dsa) {
