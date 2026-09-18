@@ -637,7 +637,7 @@ function buildBid(bid, bidderRequest, seatbid) {
 
   // Inticator bid adaptor only returns `vastXml` for video bids. No VastUrl or videoCache.
   if (!bidResponse.vastUrl && bidResponse.vastXml) {
-    bidResponse.vastUrl = 'data:text/xml;charset=utf-8;base64,' + window.btoa(bidResponse.vastXml);
+    bidResponse.vastUrl = vastXmlToDataUri(bidResponse.vastXml);
   }
 
   if (bid.ext && bid.ext.dsa) {

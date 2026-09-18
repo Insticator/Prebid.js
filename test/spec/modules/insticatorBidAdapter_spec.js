@@ -1798,16 +1798,18 @@ describe('InsticatorBidAdapter', function () {
   });
 });
 
-describe('InsticatorBidAdapter — audio', function () {
-  function decodeVastDataUri(dataUri) {
-    const base64 = dataUri.replace(/^data:text\/xml;charset=utf-8;base64,/, '');
-    const binary = window.atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let idx = 0; idx < binary.length; idx++) {
-      bytes[idx] = binary.charCodeAt(idx);
-    }
-    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+// Decodes the base64 data URI honouring charset=utf-8; fatal:true so invalid UTF-8 throws.
+function decodeVastDataUri(dataUri) {
+  const base64 = dataUri.replace(/^data:text\/xml;charset=utf-8;base64,/, '');
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let idx = 0; idx < binary.length; idx++) {
+    bytes[idx] = binary.charCodeAt(idx);
   }
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+}
+
+describe('InsticatorBidAdapter — audio', function () {
   const audioBidRequest = {
     bidder: 'insticator',
     adUnitCode: 'audio-adunit',
@@ -2451,5 +2453,56 @@ describe('InsticatorBidAdapter — placement identifiers', function () {
   it('leaves ext.data absent when there is no ortb2Imp at all', function () {
     const imp = firstImp(baseBid);
     expect(imp.ext).to.not.have.property('data');
+  });
+});
+
+describe('InsticatorBidAdapter — vastUrl encoding', function () {
+  const videoBidRequest = {
+    bidder: 'insticator',
+    adUnitCode: 'video-adunit',
+    params: { adUnitId: '1a2b3c4d5e6f1a2b3c4d' },
+    mediaTypes: { video: { mimes: ['video/mp4'] } },
+    bidId: 'video-bid-1',
+  };
+  const request = { bidderRequest: { bidderRequestId: 'req-1', bids: [videoBidRequest] } };
+
+  function respondVideo(adm) {
+    return spec.interpretResponse(
+      { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'video-bid-1', crid: 'cr1', price: 1.5, adm, mtype: 2 }] }] } },
+      request,
+    )[0];
+  }
+
+  const inLine = (title) => `<VAST version="4.1"><Ad><InLine><AdTitle>${title}</AdTitle></InLine></Ad></VAST>`;
+  const creatives = {
+    'plain ASCII': inLine('Hello'),
+    'Latin-1 characters': inLine('Caf\u00e9 Gr\u00fc\u00dfe se\u00f1or \u00a9 20\u00b0 \u00a35'),
+    'characters beyond Latin-1': inLine('a \u2014 b \u20ac9.99 \u65e5\u672c\u8a9e \u201cx\u201d'),
+    'an emoji': inLine('\u{1F600}'),
+    'escaped quotes in a CDATA payload':
+      '<VAST version="4.1"><Ad><InLine><Extensions><Extension><![CDATA[{"t":"He said \\"hi\\""}]]></Extension></Extensions></InLine></Ad></VAST>',
+  };
+
+  Object.entries(creatives).forEach(([label, creative]) => {
+    it(`round-trips a video creative with ${label}`, function () {
+      const response = respondVideo(creative);
+      expect(response.mediaType).to.equal('video');
+      expect(response.vastXml).to.equal(creative);
+      expect(decodeVastDataUri(response.vastUrl)).to.equal(creative);
+    });
+  });
+
+  it('round-trips a creative longer than the encoder chunk size', function () {
+    const creative = inLine('Caf\u00e9 '.repeat(20000));
+    expect(decodeVastDataUri(respondVideo(creative).vastUrl)).to.equal(creative);
+  });
+
+  it('encodes audio and video creatives identically', function () {
+    const creative = inLine('Caf\u00e9 \u2014 \u65e5\u672c');
+    const audioUrl = spec.interpretResponse(
+      { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: creative, mtype: 3 }] }] } },
+      { bidderRequest: { bidderRequestId: 'req-1', bids: [{ ...videoBidRequest, bidId: 'audio-bid-1', mediaTypes: { audio: { mimes: ['audio/mp4'] } } }] } },
+    )[0].vastUrl;
+    expect(respondVideo(creative).vastUrl).to.equal(audioUrl);
   });
 });
