@@ -2040,6 +2040,54 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(params.audio.feed).to.equal(99);
     });
 
+    it('merges ext from the ad unit and params.audio', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, ext: { adUnitKey: 'a' } } },
+        params: { ...audioBidRequest.params, audio: { ext: { bidderKey: 'b' } } },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.ext).to.deep.equal({ adUnitKey: 'a', bidderKey: 'b' });
+    });
+
+    it('lets params.audio win on a colliding ext key', function () {
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, ext: { shared: 'adUnit', adUnitKey: 'a' } } },
+        params: { ...audioBidRequest.params, audio: { ext: { shared: 'params' } } },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.ext).to.deep.equal({ shared: 'params', adUnitKey: 'a' });
+    });
+
+    it('merges nested ext objects without mutating either source', function () {
+      const adUnitExt = { nested: { keep: 1 } };
+      const paramsExt = { nested: { add: 2 } };
+      const bid = {
+        ...audioBidRequest,
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, ext: adUnitExt } },
+        params: { ...audioBidRequest.params, audio: { ext: paramsExt } },
+      };
+      const imp = firstImp(bid);
+      expect(imp.audio.ext.nested).to.deep.equal({ keep: 1, add: 2 });
+      expect(adUnitExt).to.deep.equal({ nested: { keep: 1 } });
+      expect(paramsExt).to.deep.equal({ nested: { add: 2 } });
+    });
+
+    it('keeps a lone ext from either source', function () {
+      const fromAdUnit = firstImp({
+        ...audioBidRequest,
+        mediaTypes: { audio: { ...audioBidRequest.mediaTypes.audio, ext: { adUnitKey: 'a' } } },
+      });
+      expect(fromAdUnit.audio.ext).to.deep.equal({ adUnitKey: 'a' });
+
+      const fromParams = firstImp({
+        ...audioBidRequest,
+        params: { ...audioBidRequest.params, audio: { ext: { bidderKey: 'b' } } },
+      });
+      expect(fromParams.audio.ext).to.deep.equal({ bidderKey: 'b' });
+    });
+
     it('asks for an audio floor', function () {
       const seen = [];
       const bid = {

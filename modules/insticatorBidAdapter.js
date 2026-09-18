@@ -1,7 +1,7 @@
 import { config } from '../src/config.js';
 import { AUDIO, BANNER, VIDEO } from '../src/mediaTypes.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
-import { deepAccess, generateUUID, logError, isArray, isInteger, isArrayOfNums, isPlainObject, deepSetValue, isFn, logWarn, getWinDimensions } from '../src/utils.js';
+import { deepAccess, generateUUID, logError, isArray, isInteger, isArrayOfNums, isPlainObject, deepSetValue, isFn, logWarn, getWinDimensions, mergeDeep } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
 
 const BIDDER_CODE = 'insticator';
@@ -66,7 +66,7 @@ export const OPTIONAL_AUDIO_PARAMS = {
   'stitched': (value) => isInteger(value) && [0, 1].includes(value),
   'nvol': (value) => isInteger(value) && [0, 1, 2, 3, 4].includes(value),
   'durfloors': (value) => Array.isArray(value) && value.length > 0 && value.every(isPlainObject),
-  'ext': (value) => typeof value === 'object' && value !== null && !Array.isArray(value),
+  'ext': (value) => isPlainObject(value),
 };
 
 const ORTB_SITE_FIRST_PARTY_DATA = {
@@ -205,10 +205,17 @@ function buildAudio(bidRequest) {
     optionalParams['context'] = context;
   }
 
-  return {
+  const audioObj = {
     ...optionalParams,
     ...audioParamOverrides
   };
+
+  // ext holds independent keys, so a bidder-level ext extends the ad unit's rather than replacing it.
+  if (optionalParams.ext && audioParamOverrides.ext) {
+    audioObj.ext = mergeDeep({}, optionalParams.ext, audioParamOverrides.ext);
+  }
+
+  return audioObj;
 }
 
 function buildImpression(bidRequest) {
