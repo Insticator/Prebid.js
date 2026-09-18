@@ -2340,6 +2340,18 @@ describe('InsticatorBidAdapter — audio', function () {
       expect(response.height).to.equal(250);
     });
 
+    it('survives a bid whose ext.meta is not an object', function () {
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3, ext: { meta: 'not an object' } });
+      expect(response.meta.mediaType).to.equal('audio');
+    });
+
+    it('copies ext.meta rather than mutating the bid', function () {
+      const dspExt = { meta: { advertiserDomains: ['advertiser.example'] } };
+      const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3, ext: dspExt });
+      expect(response.meta.advertiserDomains).to.deep.equal(['advertiser.example']);
+      expect(Object.keys(dspExt.meta)).to.deep.equal(['advertiserDomains']);
+    });
+
     it('mirrors the media type onto meta so bidResponseFilter cannot reject it', function () {
       const [response] = respond({ impid: 'audio-bid-1', crid: 'cr1', price: 1.5, adm: vast, mtype: 3 });
       expect(response.meta.mediaType).to.equal('audio');

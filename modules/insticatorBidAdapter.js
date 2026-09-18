@@ -540,8 +540,8 @@ function buildBid(bid, bidderRequest, seatbid) {
 
   let meta = {};
 
-  if (bid.ext && bid.ext.meta) {
-    meta = bid.ext.meta;
+  if (bid.ext && isPlainObject(bid.ext.meta)) {
+    meta = { ...bid.ext.meta };
   }
 
   if (bid.adomain) {
