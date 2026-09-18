@@ -237,11 +237,6 @@ function buildImpression(bidRequest) {
     deepSetValue(imp, 'ext.data', impFirstPartyData);
   }
 
-  const transactionId = deepAccess(bidRequest, 'ortb2Imp.ext.tid');
-  if (transactionId) {
-    deepSetValue(imp, 'ext.tid', transactionId);
-  }
-
   if (bidRequest?.params?.adUnitId) {
     deepSetValue(imp, 'ext.prebid.bidder.insticator.adUnitId', bidRequest.params.adUnitId);
   }

@@ -2443,16 +2443,6 @@ describe('InsticatorBidAdapter — placement identifiers', function () {
     expect(imp.ext.data.pageType).to.equal('article');
   });
 
-  it('forwards ext.tid', function () {
-    const imp = firstImp({ ...baseBid, ortb2Imp: { ext: { tid: 'tid-abc-123' } } });
-    expect(imp.ext.tid).to.equal('tid-abc-123');
-  });
-
-  it('omits ext.tid when core has redacted it', function () {
-    const imp = firstImp({ ...baseBid, ortb2Imp: { ext: { gpid: '/1111/homepage#1' } } });
-    expect(imp.ext).to.not.have.property('tid');
-  });
-
   it('leaves ext.data absent when the publisher sets neither', function () {
     const imp = firstImp({ ...baseBid, ortb2Imp: { ext: { gpid: '/1111/homepage#1' } } });
     expect(imp.ext).to.not.have.property('data');
