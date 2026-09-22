@@ -1,5 +1,5 @@
 import { config } from '../src/config.js';
-import { AUDIO, BANNER, VIDEO } from '../src/mediaTypes.js';
+import { AUDIO, BANNER, NATIVE, VIDEO } from '../src/mediaTypes.js';
 import { registerBidder } from '../src/adapters/bidderFactory.js';
 import { deepAccess, generateUUID, logError, isArray, isInteger, isArrayOfNums, isPlainObject, deepSetValue, isFn, logWarn, getWinDimensions, mergeDeep } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
@@ -229,6 +229,18 @@ function buildAudio(bidRequest) {
   return audioObj;
 }
 
+function buildNative(bidRequest) {
+  // Prebid core pre-normalizes ortb-style native config onto bid.nativeOrtbRequest
+  // (asset ids already assigned there); fall back to the raw ad unit config.
+  const nativeOrtbRequest = bidRequest.nativeOrtbRequest ||
+    deepAccess(bidRequest, 'mediaTypes.native.ortb');
+
+  return {
+    ver: '1.2',
+    request: JSON.stringify({ ver: '1.2', ...nativeOrtbRequest }),
+  };
+}
+
 function buildImpression(bidRequest) {
   const insticatorBidderParams = {};
 
@@ -284,10 +296,14 @@ function buildImpression(bidRequest) {
     imp.audio = buildAudio(bidRequest);
   }
 
+  if (deepAccess(bidRequest, 'mediaTypes.native')) {
+    imp.native = buildNative(bidRequest);
+  }
+
   if (isFn(bidRequest.getFloor)) {
     let moduleBidFloor;
 
-    const mediaType = deepAccess(bidRequest, 'mediaTypes.banner') ? 'banner' : deepAccess(bidRequest, 'mediaTypes.video') ? 'video' : deepAccess(bidRequest, 'mediaTypes.audio') ? 'audio' : undefined;
+    const mediaType = deepAccess(bidRequest, 'mediaTypes.banner') ? 'banner' : deepAccess(bidRequest, 'mediaTypes.video') ? 'video' : deepAccess(bidRequest, 'mediaTypes.audio') ? 'audio' : deepAccess(bidRequest, 'mediaTypes.native') ? 'native' : undefined;
 
     let _mediaType = mediaType;
     let _size = '*';
@@ -560,6 +576,19 @@ function vastXmlToDataUri(vastXml) {
   return 'data:text/xml;charset=utf-8;base64,' + window.btoa(latin1);
 }
 
+function isNativeAdm(adM) {
+  if (!adM || adM.charAt(0) !== '{') {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(adM);
+    const root = parsed.native || parsed;
+    return Boolean(root && (root.assets || root.link));
+  } catch (parseError) {
+    return false;
+  }
+}
+
 function buildBid(bid, bidderRequest, seatbid) {
   const originalBid = ((bidderRequest.bids) || []).find((b) => b.bidId === bid.impid);
 
@@ -601,6 +630,8 @@ function buildBid(bid, bidderRequest, seatbid) {
     mediaType = 'video';
   } else if (bid.mtype === 3) {
     mediaType = 'audio';
+  } else if (bid.mtype === 4) {
+    mediaType = 'native';
   // 2. Fall back to content detection (case-insensitive)
   } else if (bid.adm && bid.adm.toLowerCase().includes('<vast') && !bid.adm.toLowerCase().includes('<script')) {
     const declaredMediaTypes = originalBid?.mediaTypes || {};
@@ -612,6 +643,8 @@ function buildBid(bid, bidderRequest, seatbid) {
     } else {
       mediaType = 'video';
     }
+  } else if (isNativeAdm(bid.adm)) {
+    mediaType = 'native';
   }
 
   meta.mediaType = mediaType;
@@ -663,6 +696,17 @@ function buildBid(bid, bidderRequest, seatbid) {
     bidResponse.video.durationSeconds = bid.dur;
   }
 
+  if (mediaType === 'native') {
+    try {
+      const parsedAdm = JSON.parse(bid.adm);
+      // Legacy DSP responses arrive wrapped in a root "native" object; the renderer needs the bare object.
+      bidResponse.native = { ortb: parsedAdm.native || parsedAdm };
+    } catch (parseError) {
+      logError('insticator: native bid adm is not valid JSON, discarding bid', { impid: bid.impid });
+      return null;
+    }
+  }
+
   if (bid.ext && bid.ext.dsa) {
     bidResponse.ext = {
       ...bidResponse.ext,
@@ -674,7 +718,8 @@ function buildBid(bid, bidderRequest, seatbid) {
 }
 
 function buildBidSet(seatbid, bidderRequest) {
-  return seatbid.bid.map((bid) => buildBid(bid, bidderRequest, seatbid));
+  // buildBid returns null for undecodable creatives (e.g. broken native JSON) — drop those, keep the rest.
+  return seatbid.bid.map((bid) => buildBid(bid, bidderRequest, seatbid)).filter(Boolean);
 }
 
 function validateSize(size) {
@@ -704,8 +749,8 @@ function validateAdUnitId(bid) {
 }
 
 function validateMediaType(bid) {
-  if (!(BANNER in bid.mediaTypes || VIDEO in bid.mediaTypes || AUDIO in bid.mediaTypes)) {
-    logError('insticator: expected banner, video or audio in mediaTypes');
+  if (!(BANNER in bid.mediaTypes || VIDEO in bid.mediaTypes || AUDIO in bid.mediaTypes || NATIVE in bid.mediaTypes)) {
+    logError('insticator: expected banner, video, audio or native in mediaTypes');
     return false;
   }
 
@@ -822,6 +867,25 @@ function validateAudio(bid) {
   return true;
 }
 
+function validateNative(bid) {
+  const nativeParams = deepAccess(bid, 'mediaTypes.native');
+
+  if (nativeParams === undefined) {
+    return true;
+  }
+
+  // Prebid core normalizes ortb-style config onto bid.nativeOrtbRequest;
+  // mediaTypes.native.ortb is the raw publisher config. Either must carry assets.
+  const nativeOrtbRequest = bid.nativeOrtbRequest || deepAccess(bid, 'mediaTypes.native.ortb');
+
+  if (!nativeOrtbRequest || !Array.isArray(nativeOrtbRequest.assets) || nativeOrtbRequest.assets.length === 0) {
+    logError('insticator: native requires mediaTypes.native.ortb with a non-empty assets array');
+    return false;
+  }
+
+  return true;
+}
+
 function parsePlayerSizeToWidthHeight(playerSize, w, h) {
   if (!w && playerSize) {
     if (Array.isArray(playerSize[0])) {
@@ -844,7 +908,7 @@ function parsePlayerSizeToWidthHeight(playerSize, w, h) {
 export const spec = {
   code: BIDDER_CODE,
   gvlid: GVLID,
-  supportedMediaTypes: [BANNER, VIDEO, AUDIO],
+  supportedMediaTypes: [BANNER, VIDEO, AUDIO, NATIVE],
 
   isBidRequestValid: function (bid) {
     return (
@@ -852,7 +916,8 @@ export const spec = {
       validateMediaType(bid) &&
       validateBanner(bid) &&
       validateVideo(bid) &&
-      validateAudio(bid)
+      validateAudio(bid) &&
+      validateNative(bid)
     );
   },
 
