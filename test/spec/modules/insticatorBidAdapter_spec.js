@@ -3007,3 +3007,214 @@ describe('InsticatorBidAdapter — publisher input the adapter must survive', fu
     expect({}.polluted).to.be.undefined;
   });
 });
+
+describe('InsticatorBidAdapter — native', function () {
+  const nativeOrtb = {
+    assets: [
+      { id: 1, required: 1, title: { len: 90 } },
+      { id: 2, required: 1, img: { type: 3, wmin: 300, hmin: 250 } },
+      { id: 3, required: 0, data: { type: 1, len: 25 } },
+    ],
+    eventtrackers: [{ event: 1, methods: [1, 2] }],
+  };
+
+  const nativeBidRequest = {
+    bidder: 'insticator',
+    adUnitCode: 'native-adunit',
+    params: { adUnitId: '1a2b3c4d5e6f1a2b3c4d' },
+    mediaTypes: { native: { ortb: nativeOrtb } },
+    bidId: 'native-bid-1',
+  };
+
+  const nativeAdm = JSON.stringify({
+    ver: '1.2',
+    assets: [
+      { id: 1, title: { text: 'Meet the new thing' } },
+      { id: 2, img: { type: 3, url: 'https://cdn.example.com/main.jpg', w: 600, h: 500 } },
+      { id: 3, data: { value: 'BrandCo' } },
+    ],
+    link: { url: 'https://example.com/click' },
+    eventtrackers: [{ event: 1, method: 1, url: 'https://tracker.example.com/imp' }],
+  });
+
+  describe('supportedMediaTypes', function () {
+    it('includes native alongside banner, video and audio', function () {
+      expect(spec.supportedMediaTypes).to.include('native');
+      expect(spec.supportedMediaTypes).to.include('audio');
+    });
+  });
+
+  describe('isBidRequestValid', function () {
+    it('accepts a native-only ad unit with ortb assets', function () {
+      expect(spec.isBidRequestValid(nativeBidRequest)).to.be.true;
+    });
+
+    it('accepts a native ad unit normalized by core onto nativeOrtbRequest', function () {
+      const bid = {
+        ...nativeBidRequest,
+        mediaTypes: { native: { title: { required: true } } },
+        nativeOrtbRequest: nativeOrtb,
+      };
+      expect(spec.isBidRequestValid(bid)).to.be.true;
+    });
+
+    it('rejects native without an ortb request object', function () {
+      const bid = { ...nativeBidRequest, mediaTypes: { native: {} } };
+      expect(spec.isBidRequestValid(bid)).to.be.false;
+    });
+
+    it('rejects native with an empty assets array', function () {
+      const bid = { ...nativeBidRequest, mediaTypes: { native: { ortb: { assets: [] } } } };
+      expect(spec.isBidRequestValid(bid)).to.be.false;
+    });
+
+    it('accepts a banner+native multi-format ad unit', function () {
+      const bid = {
+        ...nativeBidRequest,
+        mediaTypes: { banner: { sizes: [[300, 250]] }, native: { ortb: nativeOrtb } },
+      };
+      expect(spec.isBidRequestValid(bid)).to.be.true;
+    });
+  });
+
+  describe('buildRequests', function () {
+    let getDataFromLocalStorageStub, localStorageIsEnabledStub, cookiesAreEnabledStub, getCookieStub;
+
+    beforeEach(function () {
+      getGlobal().bidderSettings = { insticator: { storageAllowed: true } };
+      getDataFromLocalStorageStub = sinon.stub(storage, 'getDataFromLocalStorage').returns(USER_ID_DUMMY_VALUE);
+      localStorageIsEnabledStub = sinon.stub(storage, 'localStorageIsEnabled').returns(true);
+      cookiesAreEnabledStub = sinon.stub(storage, 'cookiesAreEnabled').returns(false);
+      getCookieStub = sinon.stub(storage, 'getCookie').returns(null);
+    });
+
+    afterEach(function () {
+      getDataFromLocalStorageStub.restore();
+      localStorageIsEnabledStub.restore();
+      cookiesAreEnabledStub.restore();
+      getCookieStub.restore();
+      getGlobal().bidderSettings = {};
+    });
+
+    function firstImp(bid) {
+      const requests = spec.buildRequests([bid], { bidderRequestId: 'req-1', refererInfo: { page: 'https://example.com' } });
+      return JSON.parse(requests[0].data).imp[0];
+    }
+
+    it('builds imp.native with a stringified request and ver 1.2', function () {
+      const imp = firstImp(nativeBidRequest);
+      expect(imp.native).to.exist;
+      expect(imp.native.ver).to.equal('1.2');
+      expect(imp.native.request).to.be.a('string');
+    });
+
+    it('round-trips the assets and eventtrackers inside the request string', function () {
+      const imp = firstImp(nativeBidRequest);
+      const innerRequest = JSON.parse(imp.native.request);
+      expect(innerRequest.ver).to.equal('1.2');
+      expect(innerRequest.assets).to.have.length(3);
+      expect(innerRequest.assets[0].title.len).to.equal(90);
+      expect(innerRequest.eventtrackers).to.deep.equal([{ event: 1, methods: [1, 2] }]);
+    });
+
+    it('prefers the core-normalized nativeOrtbRequest over raw ad unit config', function () {
+      const normalized = { assets: [{ id: 7, required: 1, title: { len: 25 } }] };
+      const bid = { ...nativeBidRequest, nativeOrtbRequest: normalized };
+      const innerRequest = JSON.parse(firstImp(bid).native.request);
+      expect(innerRequest.assets).to.have.length(1);
+      expect(innerRequest.assets[0].id).to.equal(7);
+    });
+
+    it('emits no native object when the ad unit has none', function () {
+      const bid = { ...nativeBidRequest, mediaTypes: { banner: { sizes: [[300, 250]] } } };
+      expect(firstImp(bid).native).to.not.exist;
+    });
+
+    it('emits banner and native side by side for a multi-format unit', function () {
+      const bid = {
+        ...nativeBidRequest,
+        mediaTypes: { banner: { sizes: [[300, 250]] }, native: { ortb: nativeOrtb } },
+      };
+      const imp = firstImp(bid);
+      expect(imp.banner).to.exist;
+      expect(imp.native).to.exist;
+    });
+
+    it('asks for a native floor', function () {
+      const seen = [];
+      const bid = {
+        ...nativeBidRequest,
+        getFloor: (args) => { seen.push(args); return { currency: 'USD', floor: 0.45 }; },
+      };
+      const imp = firstImp(bid);
+      expect(seen.some((call) => call.mediaType === 'native' && call.size === '*')).to.equal(true);
+      expect(imp.bidfloor).to.equal(0.45);
+    });
+  });
+
+  describe('interpretResponse', function () {
+    const request = {
+      bidderRequest: {
+        bidderRequestId: 'req-1',
+        bids: [{ ...nativeBidRequest }],
+      },
+    };
+
+    function respond(bid) {
+      return spec.interpretResponse({ body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [bid] }] } }, request);
+    }
+
+    it('maps mtype 4 to the native media type', function () {
+      const [response] = respond({ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: nativeAdm, mtype: 4 });
+      expect(response.mediaType).to.equal('native');
+      expect(response.meta.mediaType).to.equal('native');
+    });
+
+    it('exposes the parsed creative on native.ortb', function () {
+      const [response] = respond({ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: nativeAdm, mtype: 4 });
+      expect(response.native).to.exist;
+      expect(response.native.ortb.assets).to.have.length(3);
+      expect(response.native.ortb.link.url).to.equal('https://example.com/click');
+    });
+
+    it('unwraps a legacy wrapped native response', function () {
+      const wrappedAdm = JSON.stringify({ native: JSON.parse(nativeAdm) });
+      const [response] = respond({ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: wrappedAdm, mtype: 4 });
+      expect(response.native.ortb.assets).to.have.length(3);
+      expect(response.native.ortb.native).to.not.exist;
+    });
+
+    it('detects native JSON when the bid carries no mtype', function () {
+      const [response] = respond({ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: nativeAdm });
+      expect(response.mediaType).to.equal('native');
+      expect(response.native.ortb.assets).to.have.length(3);
+    });
+
+    it('drops a native bid whose adm is not valid JSON and keeps the rest', function () {
+      const responses = spec.interpretResponse(
+        {
+          body: {
+            id: 'req-1',
+            cur: 'USD',
+            seatbid: [{
+              seat: 's',
+              bid: [
+                { impid: 'native-bid-1', crid: 'cr-bad', price: 2.5, adm: '{broken json', mtype: 4 },
+                { impid: 'native-bid-1', crid: 'cr-good', price: 1.5, adm: nativeAdm, mtype: 4 },
+              ],
+            }],
+          },
+        },
+        request,
+      );
+      expect(responses).to.have.length(1);
+      expect(responses[0].creativeId).to.equal('cr-good');
+    });
+
+    it('sets no width or height on a native bid', function () {
+      const [response] = respond({ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: nativeAdm, mtype: 4 });
+      expect(response.width).to.not.exist;
+      expect(response.height).to.not.exist;
+    });
+  });
+});
