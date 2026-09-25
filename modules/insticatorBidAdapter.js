@@ -230,15 +230,37 @@ function buildAudio(bidRequest) {
 }
 
 function buildNative(bidRequest) {
-  // Prebid core pre-normalizes ortb-style native config onto bid.nativeOrtbRequest
-  // (asset ids already assigned there); fall back to the raw ad unit config.
-  const nativeOrtbRequest = bidRequest.nativeOrtbRequest ||
-    deepAccess(bidRequest, 'mediaTypes.native.ortb');
+  // core sets bid.nativeOrtbRequest only when mediaTypes.native.ortb passed validation;
+  // reading the raw config would re-admit configs core rejected.
+  const nativeOrtbRequest = bidRequest.nativeOrtbRequest;
+  if (!nativeOrtbRequest || !Array.isArray(nativeOrtbRequest.assets) || nativeOrtbRequest.assets.length === 0) {
+    logWarn('insticator: mediaTypes.native is set, but no valid ortb assets were found. Native request skipped.');
+    return undefined;
+  }
 
-  return {
-    ver: '1.2',
-    request: JSON.stringify({ ver: '1.2', ...nativeOrtbRequest }),
-  };
+  const ver = nativeOrtbRequest.ver || '1.2';
+  let request;
+  try {
+    request = JSON.stringify({ ...nativeOrtbRequest, ver });
+  } catch (stringifyError) {
+    logError('insticator: could not serialize the native ortb request. Native request skipped.');
+    return undefined;
+  }
+
+  const nativeObj = { ver, request };
+
+  const nativeMediaType = deepAccess(bidRequest, 'mediaTypes.native');
+  if (isPlainObject(nativeMediaType?.ext)) {
+    nativeObj.ext = mergeDeep({}, nativeMediaType.ext);
+  }
+  if (isArrayOfNums(nativeMediaType?.api)) {
+    nativeObj.api = nativeMediaType.api;
+  }
+  if (isArrayOfNums(nativeMediaType?.battr)) {
+    nativeObj.battr = nativeMediaType.battr;
+  }
+
+  return nativeObj;
 }
 
 function buildImpression(bidRequest) {
@@ -297,13 +319,21 @@ function buildImpression(bidRequest) {
   }
 
   if (deepAccess(bidRequest, 'mediaTypes.native')) {
-    imp.native = buildNative(bidRequest);
+    const nativeObj = buildNative(bidRequest);
+    if (nativeObj) {
+      imp.native = nativeObj;
+    }
   }
 
   if (isFn(bidRequest.getFloor)) {
     let moduleBidFloor;
 
-    const mediaType = deepAccess(bidRequest, 'mediaTypes.banner') ? 'banner' : deepAccess(bidRequest, 'mediaTypes.video') ? 'video' : deepAccess(bidRequest, 'mediaTypes.audio') ? 'audio' : deepAccess(bidRequest, 'mediaTypes.native') ? 'native' : undefined;
+    // A multi-format imp has one imp-level bidfloor, so ask the floors module for the
+    // cross-type floor ('*') rather than silently pricing every format at one type's floor.
+    const presentMediaTypes = ['banner', 'video', 'audio', 'native'].filter(
+      (candidateType) => deepAccess(bidRequest, `mediaTypes.${candidateType}`)
+    );
+    const mediaType = presentMediaTypes.length === 1 ? presentMediaTypes[0] : (presentMediaTypes.length > 1 ? '*' : undefined);
 
     let _mediaType = mediaType;
     let _size = '*';
@@ -577,16 +607,23 @@ function vastXmlToDataUri(vastXml) {
 }
 
 function isNativeAdm(adM) {
-  if (!adM || adM.charAt(0) !== '{') {
+  if (typeof adM !== 'string') {
+    return isPlainObject(adM) && isNativeOrtbObject(adM.native || adM);
+  }
+  const trimmed = adM.trim();
+  if (!trimmed.startsWith('{')) {
     return false;
   }
   try {
-    const parsed = JSON.parse(adM);
-    const root = parsed.native || parsed;
-    return Boolean(root && (root.assets || root.link));
+    const parsed = JSON.parse(trimmed);
+    return isPlainObject(parsed) && isNativeOrtbObject(parsed.native || parsed);
   } catch (parseError) {
     return false;
   }
+}
+
+function isNativeOrtbObject(root) {
+  return isPlainObject(root) && Array.isArray(root.assets) && Boolean(root.link?.url);
 }
 
 function buildBid(bid, bidderRequest, seatbid) {
@@ -630,7 +667,9 @@ function buildBid(bid, bidderRequest, seatbid) {
     mediaType = 'video';
   } else if (bid.mtype === 3) {
     mediaType = 'audio';
-  } else if (bid.mtype === 4) {
+  } else if (bid.mtype === 4 && deepAccess(originalBid, 'mediaTypes.native')) {
+    // mtype alone is not trusted onto a unit that never asked for native;
+    // an unmatched originalBid falls through to content detection below.
     mediaType = 'native';
   // 2. Fall back to content detection (case-insensitive)
   } else if (bid.adm && bid.adm.toLowerCase().includes('<vast') && !bid.adm.toLowerCase().includes('<script')) {
@@ -697,14 +736,24 @@ function buildBid(bid, bidderRequest, seatbid) {
   }
 
   if (mediaType === 'native') {
+    let parsedAdm;
     try {
-      const parsedAdm = JSON.parse(bid.adm);
-      // Legacy DSP responses arrive wrapped in a root "native" object; the renderer needs the bare object.
-      bidResponse.native = { ortb: parsedAdm.native || parsedAdm };
+      parsedAdm = typeof bid.adm === 'string' ? JSON.parse(bid.adm) : bid.adm;
     } catch (parseError) {
       logError('insticator: native bid adm is not valid JSON, discarding bid', { impid: bid.impid });
       return null;
     }
+    // Legacy DSP responses arrive wrapped in a root "native" object; the renderer needs the bare object.
+    const ortb = isPlainObject(parsedAdm) ? (parsedAdm.native || parsedAdm) : null;
+    // Core's validity check maps over ortb.assets unguarded, and that throw escapes
+    // interpretResponse's try/catch and stalls the auction — never hand it a shapeless object.
+    if (!isPlainObject(ortb) || !Array.isArray(ortb.assets)) {
+      logError('insticator: native bid adm has no assets, discarding bid', { impid: bid.impid });
+      return null;
+    }
+    bidResponse.native = { ortb };
+    // Native has no HTML creative; a raw-JSON `ad` would be doc.written by legacy renderers.
+    delete bidResponse.ad;
   }
 
   if (bid.ext && bid.ext.dsa) {
@@ -874,12 +923,12 @@ function validateNative(bid) {
     return true;
   }
 
-  // Prebid core normalizes ortb-style config onto bid.nativeOrtbRequest;
-  // mediaTypes.native.ortb is the raw publisher config. Either must carry assets.
-  const nativeOrtbRequest = bid.nativeOrtbRequest || deepAccess(bid, 'mediaTypes.native.ortb');
+  // Core copies every valid mediaTypes.native.ortb onto bid.nativeOrtbRequest before this
+  // runs; when it is absent the config failed core's own validation and must not be revived.
+  const nativeOrtbRequest = bid.nativeOrtbRequest;
 
   if (!nativeOrtbRequest || !Array.isArray(nativeOrtbRequest.assets) || nativeOrtbRequest.assets.length === 0) {
-    logError('insticator: native requires mediaTypes.native.ortb with a non-empty assets array');
+    logError('insticator: native requires a valid mediaTypes.native.ortb config with a non-empty assets array');
     return false;
   }
 

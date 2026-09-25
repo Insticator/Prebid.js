@@ -3018,11 +3018,14 @@ describe('InsticatorBidAdapter — native', function () {
     eventtrackers: [{ event: 1, methods: [1, 2] }],
   };
 
+  // Core copies a valid mediaTypes.native.ortb onto nativeOrtbRequest before the adapter
+  // runs — fixtures mirror that normalized state.
   const nativeBidRequest = {
     bidder: 'insticator',
     adUnitCode: 'native-adunit',
     params: { adUnitId: '1a2b3c4d5e6f1a2b3c4d' },
     mediaTypes: { native: { ortb: nativeOrtb } },
+    nativeOrtbRequest: nativeOrtb,
     bidId: 'native-bid-1',
   };
 
@@ -3060,18 +3063,26 @@ describe('InsticatorBidAdapter — native', function () {
 
     it('rejects native without an ortb request object', function () {
       const bid = { ...nativeBidRequest, mediaTypes: { native: {} } };
+      delete bid.nativeOrtbRequest;
       expect(spec.isBidRequestValid(bid)).to.be.false;
     });
 
     it('rejects native with an empty assets array', function () {
-      const bid = { ...nativeBidRequest, mediaTypes: { native: { ortb: { assets: [] } } } };
+      const bid = { ...nativeBidRequest, nativeOrtbRequest: { assets: [] }, mediaTypes: { native: { ortb: { assets: [] } } } };
       expect(spec.isBidRequestValid(bid)).to.be.false;
+    });
+
+    it('rejects a config core did not normalize — raw mediaTypes.native.ortb is never a fallback', function () {
+      const coreRejected = { ...nativeBidRequest };
+      delete coreRejected.nativeOrtbRequest;
+      expect(spec.isBidRequestValid(coreRejected)).to.be.false;
     });
 
     it('accepts a banner+native multi-format ad unit', function () {
       const bid = {
         ...nativeBidRequest,
         mediaTypes: { banner: { sizes: [[300, 250]] }, native: { ortb: nativeOrtb } },
+        nativeOrtbRequest: nativeOrtb,
       };
       expect(spec.isBidRequestValid(bid)).to.be.true;
     });
@@ -3117,12 +3128,47 @@ describe('InsticatorBidAdapter — native', function () {
       expect(innerRequest.eventtrackers).to.deep.equal([{ event: 1, methods: [1, 2] }]);
     });
 
-    it('prefers the core-normalized nativeOrtbRequest over raw ad unit config', function () {
+    it('builds only from the core-normalized nativeOrtbRequest', function () {
       const normalized = { assets: [{ id: 7, required: 1, title: { len: 25 } }] };
       const bid = { ...nativeBidRequest, nativeOrtbRequest: normalized };
       const innerRequest = JSON.parse(firstImp(bid).native.request);
       expect(innerRequest.assets).to.have.length(1);
       expect(innerRequest.assets[0].id).to.equal(7);
+    });
+
+    it('skips imp.native when core rejected the config, instead of shipping it raw', function () {
+      const coreRejected = { ...nativeBidRequest };
+      delete coreRejected.nativeOrtbRequest;
+      expect(firstImp(coreRejected).native).to.not.exist;
+    });
+
+    it('passes the config ver through instead of hardcoding 1.2', function () {
+      const bid = { ...nativeBidRequest, nativeOrtbRequest: { ...nativeOrtb, ver: '1.1' } };
+      const imp = firstImp(bid);
+      expect(imp.native.ver).to.equal('1.1');
+      expect(JSON.parse(imp.native.request).ver).to.equal('1.1');
+    });
+
+    it('forwards ext, api and battr the publisher set on mediaTypes.native', function () {
+      const bid = {
+        ...nativeBidRequest,
+        mediaTypes: { native: { ortb: nativeOrtb, ext: { pubKey: 'x' }, api: [3], battr: [1, 2] } },
+      };
+      const imp = firstImp(bid);
+      expect(imp.native.ext).to.deep.equal({ pubKey: 'x' });
+      expect(imp.native.api).to.deep.equal([3]);
+      expect(imp.native.battr).to.deep.equal([1, 2]);
+    });
+
+    it('asks the floors module for the cross-type floor on a multi-format unit', function () {
+      const seen = [];
+      const bid = {
+        ...nativeBidRequest,
+        mediaTypes: { banner: { sizes: [[300, 250]] }, native: { ortb: nativeOrtb } },
+        getFloor: (args) => { seen.push(args); return { currency: 'USD', floor: 0.2 }; },
+      };
+      firstImp(bid);
+      expect(seen.some((call) => call.mediaType === '*')).to.equal(true);
     });
 
     it('emits no native object when the ad unit has none', function () {
@@ -3211,10 +3257,67 @@ describe('InsticatorBidAdapter — native', function () {
       expect(responses[0].creativeId).to.equal('cr-good');
     });
 
-    it('sets no width or height on a native bid', function () {
+    it('passes the exchange-sent width and height through', function () {
+      const [response] = respond({ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: nativeAdm, mtype: 4, w: 300, h: 250 });
+      expect(response.width).to.equal(300);
+      expect(response.height).to.equal(250);
+    });
+
+    it('drops a parseable native adm that carries no assets, and keeps the sibling', function () {
+      const responses = spec.interpretResponse(
+        {
+          body: {
+            id: 'req-1',
+            cur: 'USD',
+            seatbid: [{
+              seat: 's',
+              bid: [
+                { impid: 'native-bid-1', crid: 'cr-no-assets', price: 2.5, adm: '{"link":{"url":"https://e.com"}}', mtype: 4 },
+                { impid: 'native-bid-1', crid: 'cr-good', price: 1.5, adm: nativeAdm, mtype: 4 },
+              ],
+            }],
+          },
+        },
+        request,
+      );
+      expect(responses).to.have.length(1);
+      expect(responses[0].creativeId).to.equal('cr-good');
+    });
+
+    it('accepts an object-typed adm', function () {
+      const [response] = respond({ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: JSON.parse(nativeAdm), mtype: 4 });
+      expect(response.mediaType).to.equal('native');
+      expect(response.native.ortb.assets).to.have.length(3);
+    });
+
+    it('leaves no raw JSON on the ad field of a native bid', function () {
       const [response] = respond({ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: nativeAdm, mtype: 4 });
-      expect(response.width).to.not.exist;
-      expect(response.height).to.not.exist;
+      expect(response.ad).to.not.exist;
+    });
+
+    it('does not trust mtype 4 on a unit that never declared native', function () {
+      const bannerOnlyRequest = {
+        bidderRequest: {
+          bidderRequestId: 'req-1',
+          bids: [{
+            bidder: 'insticator',
+            adUnitCode: 'banner-adunit',
+            params: { adUnitId: '1a2b3c4d5e6f1a2b3c4d' },
+            mediaTypes: { banner: { sizes: [[300, 250]] } },
+            bidId: 'native-bid-1',
+          }],
+        },
+      };
+      const [response] = spec.interpretResponse(
+        { body: { id: 'req-1', cur: 'USD', seatbid: [{ seat: 's', bid: [{ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: '<div>banner</div>', mtype: 4 }] }] } },
+        bannerOnlyRequest,
+      );
+      expect(response.mediaType).to.equal('banner');
+    });
+
+    it('detects native JSON behind leading whitespace when no mtype is sent', function () {
+      const [response] = respond({ impid: 'native-bid-1', crid: 'cr1', price: 1.5, adm: '  ' + nativeAdm });
+      expect(response.mediaType).to.equal('native');
     });
   });
 });
